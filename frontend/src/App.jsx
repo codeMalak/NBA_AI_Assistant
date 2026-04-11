@@ -1,7 +1,5 @@
 import { useState } from 'react'
 import PredictionForm from './components/PredictionForm'
-import PredictionCard from './components/PredictionCard'
-import ExplanationPanel from './components/ExplanationPanel'
 import { explainPrediction } from './services/api'
 
 export default function App() {
@@ -9,21 +7,21 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-    async function handleSubmit(formData) {
-      setLoading(true)
-      setError('')
-      try {
-        const data = await explainPrediction(formData)
-        console.log('API result:', data)
-        setResult(data)
-      } catch (err) {
-        console.error('Prediction error:', err)
-        setError(err.response?.data?.error || err.message || 'Request failed')
-        setResult(null)
-      } finally {
-        setLoading(false)
-      }
+  async function handleSubmit(formData) {
+    setLoading(true)
+    setError('')
+    try {
+      const data = await explainPrediction(formData)
+      console.log('API result:', data)
+      setResult(data)
+    } catch (err) {
+      console.error('Prediction error:', err)
+      setError(err.response?.data?.error || err.message || 'Request failed')
+      setResult(null)
+    } finally {
+      setLoading(false)
     }
+  }
 
   return (
     <div className="page">

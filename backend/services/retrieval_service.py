@@ -1,7 +1,17 @@
 from services.data_loader import load_games
 
 
-def build_player_context(player_name, stat, threshold, predicted_value, probability):
+def build_player_context(
+    player_name,
+    stat,
+    threshold,
+    predicted_value,
+    probability,
+    game_id=None,
+    game_date=None,
+    team_abbr=None,
+    opponent_abbr=None,
+):
     df = load_games()
     player_df = df[df["player_name"].str.lower() == player_name.lower()].copy()
 
@@ -29,4 +39,8 @@ def build_player_context(player_name, stat, threshold, predicted_value, probabil
         "last_5_avg": last_5_avg,
         "season_avg": season_avg,
         "recent_values": recent_values,
+        "game_id": game_id,
+        "game_date": game_date,
+        "team_abbr": team_abbr,
+        "opponent_abbr": opponent_abbr,
     }

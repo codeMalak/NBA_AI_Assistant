@@ -12,9 +12,15 @@ explain_bp = Blueprint("explain", __name__)
 @explain_bp.post("/explain")
 def explain():
     payload = request.get_json(silent=True) or {}
+
     player_name = payload.get("player_name", "").strip()
     stat = payload.get("stat", "points").strip().lower()
     threshold = payload.get("threshold")
+
+    game_id = payload.get("game_id")
+    game_date = payload.get("game_date")
+    team_abbr = payload.get("team_abbr")
+    opponent_abbr = payload.get("opponent_abbr")
 
     if not player_name:
         return jsonify({"error": "player_name is required"}), 400
@@ -37,19 +43,17 @@ def explain():
         predicted_value = prediction_result.get("predicted_value")
         probability = prediction_result.get("probability_over_threshold")
 
-        if predicted_value is None or probability is None:
-            return jsonify({"error": "Prediction result missing required fields"}), 500
-
         context = build_player_context(
             player_name=player_name,
             stat=stat,
             threshold=threshold,
             predicted_value=predicted_value,
-            probability=probability
+            probability=probability,
+            game_id=game_id,
+            game_date=game_date,
+            team_abbr=team_abbr,
+            opponent_abbr=opponent_abbr,
         )
-
-        if context is None:
-            return jsonify({"error": f"No data found for player '{player_name}'"}), 404
 
         try:
             prompt = build_explanation_prompt(context)
@@ -68,7 +72,7 @@ def explain():
             "probability_over_threshold": probability,
             "explanation": explanation,
             "explanation_type": explanation_type,
-            "context": context
+            "context": context,
         })
 
     except ValueError as exc:

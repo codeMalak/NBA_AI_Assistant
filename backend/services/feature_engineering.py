@@ -5,22 +5,9 @@ import pandas as pd
 ROLLING_WINDOW = 5
 
 
-BASE_REQUIRED_COLUMNS = [
-    "player_name",
-    "game_date",
-    "points",
-]
-
-
-OPTIONAL_STAT_COLUMNS = [
-    "minutes",
-    "rebounds",
-    "assists",
-]
-
-
 def _validate_columns(df: pd.DataFrame) -> None:
-    missing = [col for col in BASE_REQUIRED_COLUMNS if col not in df.columns]
+    required = ["player_name", "game_date", "points", "team_abbr", "opponent_abbr"]
+    missing = [col for col in required if col not in df.columns]
     if missing:
         raise ValueError(f"Missing required columns for feature engineering: {missing}")
 
@@ -33,72 +20,89 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     data = data.dropna(subset=["player_name", "game_date", "points"])
     data = data.sort_values(["player_name", "game_date"]).reset_index(drop=True)
 
-    grouped = data.groupby("player_name", group_keys=False)
+    grouped_player = data.groupby("player_name", group_keys=False)
 
-    # Core feature: recent scoring form
-    data["points_last_5"] = grouped["points"].transform(
+    data["points_last_5"] = grouped_player["points"].transform(
         lambda s: s.shift(1).rolling(ROLLING_WINDOW, min_periods=1).mean()
     )
 
-    # Season-to-date average before current game
-    data["points_season_avg"] = grouped["points"].transform(
+    data["points_season_avg"] = grouped_player["points"].transform(
         lambda s: s.shift(1).expanding(min_periods=1).mean()
     )
 
-    # Recent volatility
-    data["points_last_5_std"] = grouped["points"].transform(
+    data["points_last_5_std"] = grouped_player["points"].transform(
         lambda s: s.shift(1).rolling(ROLLING_WINDOW, min_periods=2).std()
-    )
+    ).fillna(0)
 
-    # Number of prior games available before current game
-    data["games_played_prior"] = grouped.cumcount()
+    data["games_played_prior"] = grouped_player.cumcount()
 
-    # Optional rolling features if the columns exist
     if "minutes" in data.columns:
-        data["minutes_last_5"] = grouped["minutes"].transform(
+        data["minutes_last_5"] = grouped_player["minutes"].transform(
             lambda s: s.shift(1).rolling(ROLLING_WINDOW, min_periods=1).mean()
         )
 
     if "rebounds" in data.columns:
-        data["rebounds_last_5"] = grouped["rebounds"].transform(
+        data["rebounds_last_5"] = grouped_player["rebounds"].transform(
             lambda s: s.shift(1).rolling(ROLLING_WINDOW, min_periods=1).mean()
         )
 
     if "assists" in data.columns:
-        data["assists_last_5"] = grouped["assists"].transform(
+        data["assists_last_5"] = grouped_player["assists"].transform(
             lambda s: s.shift(1).rolling(ROLLING_WINDOW, min_periods=1).mean()
         )
 
-    # Optional binary home indicator if available
-    if "home_flag" in data.columns:
-        data["home_flag"] = data["home_flag"].fillna(0).astype(int)
+    # Player vs opponent team history
+    data = data.sort_values(["player_name", "opponent_abbr", "game_date"]).reset_index(drop=True)
+    grouped_vs_team = data.groupby(["player_name", "opponent_abbr"], group_keys=False)
 
-    # Fill std NaNs for players with too little history
-    data["points_last_5_std"] = data["points_last_5_std"].fillna(0)
+    data["vs_team_points_avg"] = grouped_vs_team["points"].transform(
+        lambda s: s.shift(1).expanding(min_periods=1).mean()
+    )
 
-    # Remove rows with no prior context
+    data["vs_team_points_last_5"] = grouped_vs_team["points"].transform(
+        lambda s: s.shift(1).rolling(ROLLING_WINDOW, min_periods=1).mean()
+    )
+
+    data["vs_team_games_count"] = grouped_vs_team.cumcount()
+
+    # Opponent defense: points allowed
+    # Since each row is a player performance against an opponent,
+    # grouping by opponent_abbr gives us points allowed by that team.
+    data = data.sort_values(["opponent_abbr", "game_date"]).reset_index(drop=True)
+    grouped_opponent = data.groupby("opponent_abbr", group_keys=False)
+
+    data["opponent_points_allowed_last_5"] = grouped_opponent["points"].transform(
+        lambda s: s.shift(1).rolling(ROLLING_WINDOW, min_periods=1).mean()
+    )
+
+    data["opponent_points_allowed_season"] = grouped_opponent["points"].transform(
+        lambda s: s.shift(1).expanding(min_periods=1).mean()
+    )
+
+    # Restore consistent ordering
+    data = data.sort_values(["player_name", "game_date"]).reset_index(drop=True)
+
+    # Drop rows with no prior context at all
     data = data.dropna(subset=["points_last_5", "points_season_avg"])
 
     return data.reset_index(drop=True)
 
 
 def get_feature_columns(df: pd.DataFrame) -> list[str]:
-    feature_columns = [
+    candidate_columns = [
         "points_last_5",
         "points_season_avg",
         "points_last_5_std",
         "games_played_prior",
-    ]
-
-    optional_features = [
         "minutes_last_5",
         "rebounds_last_5",
         "assists_last_5",
+        "vs_team_points_avg",
+        "vs_team_points_last_5",
+        "vs_team_games_count",
+        "opponent_points_allowed_last_5",
+        "opponent_points_allowed_season",
         "home_flag",
     ]
 
-    for col in optional_features:
-        if col in df.columns:
-            feature_columns.append(col)
-
-    return feature_columns
+    return [col for col in candidate_columns if col in df.columns]
