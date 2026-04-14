@@ -6,7 +6,9 @@ import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
-from services.data_loader import load_games
+from services.data_loader import load_training_data
+
+
 from services.feature_engineering import add_features, get_feature_columns
 
 MODEL_DIR = "models"
@@ -14,7 +16,7 @@ MODEL_PATH = os.path.join(MODEL_DIR, "points_model.joblib")
 
 
 def main():
-    df = load_games()
+    df = load_training_data()
     df = add_features(df)
 
     if df.empty:

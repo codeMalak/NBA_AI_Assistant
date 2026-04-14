@@ -22,23 +22,21 @@ export default function PredictionForm({ onSubmit, loading }) {
   const [playerName, setPlayerName] = useState('')
   const [threshold, setThreshold] = useState('20')
 
+  // ✅ NEW: model selector state
+  const [modelType, setModelType] = useState('baseline')
+
   const selectedGame = useMemo(() => {
     return games.find((game) => String(game.id) === String(selectedGameId)) || null
   }, [games, selectedGameId])
 
   useEffect(() => {
     async function loadGames() {
-      if (lastFetchedDateRef.current === selectedDate) {
-        return
-      }
-
+      if (lastFetchedDateRef.current === selectedDate) return
       lastFetchedDateRef.current = selectedDate
 
       try {
         setGamesError('')
-
         const data = await getGamesByDate(selectedDate)
-        console.log('Games API result:', data)
 
         const gamesList = data.games || []
         setGames(gamesList)
@@ -52,9 +50,7 @@ export default function PredictionForm({ onSubmit, loading }) {
         console.error(err)
         setGames([])
         setSelectedGameId('')
-        setGamesError(
-          err.response?.data?.error || err.message || 'Failed to load games'
-        )
+        setGamesError(err.response?.data?.error || err.message || 'Failed to load games')
       }
     }
 
@@ -109,14 +105,20 @@ export default function PredictionForm({ onSubmit, loading }) {
     const homeAbbr = selectedGame.home_team?.abbreviation
     const awayAbbr = selectedGame.visitor_team?.abbreviation
 
+    // determine which team player is on
+    const isHomePlayer = players.find(p => p.player_name === playerName && homeAbbr)
+    const team_abbr = isHomePlayer ? homeAbbr : awayAbbr
+    const opponent_abbr = isHomePlayer ? awayAbbr : homeAbbr
+
     onSubmit({
       player_name: playerName,
-      stat: 'points',
-      threshold: Number(threshold),
+      stat: "points",
+      threshold: parseFloat(threshold),
+      model_type: modelType,
+      team_abbr,
+      opponent_abbr,
       game_id: selectedGame.id,
-      game_date: selectedDate,
-      team_abbr: '',
-      opponent_abbr: homeAbbr && awayAbbr ? `${awayAbbr}@${homeAbbr}` : '',
+      game_date: selectedGame.date,
     })
   }
 
@@ -127,6 +129,15 @@ export default function PredictionForm({ onSubmit, loading }) {
         <select value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)}>
           <option value={today}>Today ({today})</option>
           <option value={tomorrow}>Tomorrow ({tomorrow})</option>
+        </select>
+      </label>
+
+      {/* ✅ FIXED MODEL DROPDOWN */}
+      <label>
+        Model
+        <select value={modelType} onChange={(e) => setModelType(e.target.value)}>
+          <option value="baseline">Baseline</option>
+          <option value="enriched">Enriched</option>
         </select>
       </label>
 

@@ -16,6 +16,7 @@ def explain():
     player_name = payload.get("player_name", "").strip()
     stat = payload.get("stat", "points").strip().lower()
     threshold = payload.get("threshold")
+    model_type = payload.get("model_type", "baseline").strip().lower()
 
     game_id = payload.get("game_id")
     game_date = payload.get("game_date")
@@ -33,11 +34,15 @@ def explain():
     except (TypeError, ValueError):
         return jsonify({"error": "threshold must be numeric"}), 400
 
+    if model_type not in {"baseline", "enriched"}:
+        return jsonify({"error": "model_type must be 'baseline' or 'enriched'"}), 400
+
     try:
         prediction_result = predict_stat_threshold(
             player_name=player_name,
             stat=stat,
-            threshold=threshold
+            threshold=threshold,
+            model_type=model_type,
         )
 
         predicted_value = prediction_result.get("predicted_value")
@@ -70,6 +75,7 @@ def explain():
             "threshold": threshold,
             "predicted_value": predicted_value,
             "probability_over_threshold": probability,
+            "model_type": model_type,
             "explanation": explanation,
             "explanation_type": explanation_type,
             "context": context,

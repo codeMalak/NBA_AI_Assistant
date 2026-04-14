@@ -10,8 +10,14 @@ export default function App() {
   async function handleSubmit(formData) {
     setLoading(true)
     setError('')
+
     try {
-      const data = await explainPrediction(formData)
+      const payload = {
+        ...formData,
+        model_type: formData.model_type || 'baseline',
+      }
+
+      const data = await explainPrediction(payload)
       console.log('API result:', data)
       setResult(data)
     } catch (err) {
@@ -41,6 +47,7 @@ export default function App() {
             <p><strong>Player:</strong> {result.player_name ?? 'N/A'}</p>
             <p><strong>Stat:</strong> {result.stat ?? 'N/A'}</p>
             <p><strong>Threshold:</strong> {result.threshold ?? 'N/A'}</p>
+            <p><strong>Model Used:</strong> {result.model_type ?? 'baseline'}</p>
             <p><strong>Predicted Value:</strong> {result.predicted_value ?? 'N/A'}</p>
             <p><strong>Probability:</strong> {result.probability_over_threshold ?? 'N/A'}</p>
             <p><strong>Explanation Type:</strong> {result.explanation_type ?? 'N/A'}</p>

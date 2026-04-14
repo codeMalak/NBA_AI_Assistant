@@ -10,6 +10,7 @@ def predict():
     player_name = payload.get("player_name", "").strip()
     stat = payload.get("stat", "points").strip().lower()
     threshold = payload.get("threshold")
+    model_type = payload.get("model_type", "baseline").strip().lower()
 
     if not player_name:
         return jsonify({"error": "player_name is required"}), 400
@@ -22,8 +23,16 @@ def predict():
     except (TypeError, ValueError):
         return jsonify({"error": "threshold must be numeric"}), 400
 
+    if model_type not in {"baseline", "enriched"}:
+        return jsonify({"error": "model_type must be 'baseline' or 'enriched'"}), 400
+
     try:
-        result = predict_stat_threshold(player_name=player_name, stat=stat, threshold=threshold)
+        result = predict_stat_threshold(
+            player_name=player_name,
+            stat=stat,
+            threshold=threshold,
+            model_type=model_type,
+        )
         return jsonify(result)
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 404
