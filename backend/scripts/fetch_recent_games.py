@@ -186,8 +186,6 @@ def flatten_stats(stats_rows: list[dict[str, Any]]) -> pd.DataFrame:
         player = row.get("player") or {}
         team = row.get("team") or {}
         game = row.get("game") or {}
-        home_team = game.get("home_team") or {}
-        visitor_team = game.get("visitor_team") or {}
 
         if idx == 0:
             print("[DEBUG] sample player object:", player)
@@ -195,21 +193,20 @@ def flatten_stats(stats_rows: list[dict[str, Any]]) -> pd.DataFrame:
             print("[DEBUG] sample game object:", game)
 
         team_id = team.get("id")
-        home_team_id = home_team.get("id")
-        visitor_team_id = visitor_team.get("id")
+
+        # BALLDONTLIE game object uses these flat keys
+        home_team_id = game.get("home_team_id")
+        visitor_team_id = game.get("visitor_team_id")
 
         home = None
         opponent_id = None
-        opponent_name = None
 
         if team_id == home_team_id:
             home = 1
             opponent_id = visitor_team_id
-            opponent_name = visitor_team.get("full_name") or visitor_team.get("name")
         elif team_id == visitor_team_id:
             home = 0
             opponent_id = home_team_id
-            opponent_name = home_team.get("full_name") or home_team.get("name")
 
         first_name = player.get("first_name", "") or ""
         last_name = player.get("last_name", "") or ""
@@ -226,7 +223,6 @@ def flatten_stats(stats_rows: list[dict[str, Any]]) -> pd.DataFrame:
                 "team_id": team_id,
                 "team_name": team.get("full_name") or team.get("name"),
                 "opponent_id": opponent_id,
-                "opponent_name": opponent_name,
                 "home": home,
                 "minutes": normalize_minutes(row.get("min")),
                 "points": row.get("pts"),
@@ -273,15 +269,18 @@ def unique_player_ids(stats_df: pd.DataFrame) -> list[int]:
 
 def fetch_player_season_averages(player_ids: list[int], season: int) -> pd.DataFrame:
     """
-    Pull a practical subset of player season averages using only valid
+    Pull a practical subset of player season averages using valid
     category/type pairings from the BALLDONTLIE NBA docs.
+
+    IMPORTANT:
+    We merge category/type results horizontally so each player-season row
+    keeps all feature groups instead of overwriting them.
     """
     if not player_ids:
         return pd.DataFrame()
 
     frames: list[pd.DataFrame] = []
 
-    # Valid pairings per BALLDONTLIE NBA docs
     category_type_pairs = [
         ("general", "base"),
         ("general", "advanced"),
@@ -308,54 +307,67 @@ def fetch_player_season_averages(player_ids: list[int], season: int) -> pd.DataF
 
             rows = fetch_paginated(f"season_averages/{category}", params=params)
 
-            if rows:
-                df = pd.DataFrame(rows)
-                if df.empty:
-                    continue
+            if not rows:
+                continue
 
-                # Extract player_id BEFORE flattening stats
-                if "player" in df.columns:
-                    player_norm = pd.json_normalize(df["player"])
-                    if "id" in player_norm.columns:
-                        df["player_id"] = player_norm["id"]
+            df = pd.DataFrame(rows)
+            if df.empty:
+                continue
 
-                # Extract player_id BEFORE flattening stats
-                if "player" in df.columns:
-                    player_norm = pd.json_normalize(df["player"])
-                    if "id" in player_norm.columns:
-                        df["player_id"] = player_norm["id"]
+            # Extract join keys first
+            if "player" in df.columns:
+                player_norm = pd.json_normalize(df["player"])
+                if "id" in player_norm.columns:
+                    df["player_id"] = player_norm["id"]
 
-                # Extract team_id if present
-                if "team" in df.columns:
-                    team_norm = pd.json_normalize(df["team"])
-                    if "id" in team_norm.columns:
-                        df["team_id"] = team_norm["id"]
+            if "team" in df.columns:
+                team_norm = pd.json_normalize(df["team"])
+                if "id" in team_norm.columns:
+                    df["team_id"] = team_norm["id"]
 
-                # Now flatten stats
-                if "stats" in df.columns:
-                    stats_df = pd.json_normalize(df["stats"]).add_prefix(f"{category}_{subtype}_")
-                    df = pd.concat([df.drop(columns=["stats"]), stats_df], axis=1)
+            # Flatten stats into prefixed feature columns
+            if "stats" in df.columns:
+                stats_df = pd.json_normalize(df["stats"]).add_prefix(f"{category}_{subtype}_")
+                df = pd.concat([df.drop(columns=["stats"]), stats_df], axis=1)
 
-                # KEEP ONLY keys that actually exist
-                base_keep_cols = ["player_id", "team_id", "season", "season_type"]
-                keep_cols = [col for col in base_keep_cols if col in df.columns]
-                stat_cols = [c for c in df.columns if c.startswith(f"{category}_{subtype}_")]
+            base_keep_cols = ["player_id", "team_id", "season", "season_type"]
+            keep_cols = [col for col in base_keep_cols if col in df.columns]
+            stat_cols = [c for c in df.columns if c.startswith(f"{category}_{subtype}_")]
 
-                df = df[keep_cols + stat_cols]
-                if "player_id" not in df.columns:
-                    raise KeyError(
-                        f"player_id missing in season averages response for category={category}, type={subtype}. "
-                        f"Available columns: {list(df.columns)}"
-                    )
-                frames.append(df)
+            df = df[keep_cols + stat_cols].copy()
+
+            if "player_id" not in df.columns:
+                raise KeyError(
+                    f"player_id missing in season averages response for category={category}, type={subtype}. "
+                    f"Available columns: {list(df.columns)}"
+                )
+
+            frames.append(df)
 
     if not frames:
         return pd.DataFrame()
 
-    # Combine ALL rows instead of merging columns
-    result = pd.concat(frames, ignore_index=True)
+    # Merge horizontally so each player-season gets all stat groups
+    result = None
+    for df in frames:
+        join_cols = [col for col in ["player_id", "team_id", "season", "season_type"] if col in df.columns]
 
-    # Remove duplicate rows per player-season
+        if result is None:
+            result = df
+        else:
+            # Avoid duplicate non-key columns when merging
+            overlapping_non_keys = [
+                c for c in df.columns
+                if c in result.columns and c not in join_cols
+            ]
+            if overlapping_non_keys:
+                df = df.drop(columns=overlapping_non_keys)
+
+            result = result.merge(df, on=join_cols, how="outer")
+
+    if result is None:
+        return pd.DataFrame()
+
     if {"player_id", "season", "season_type"}.issubset(result.columns):
         result = result.drop_duplicates(
             subset=["player_id", "season", "season_type"],
@@ -369,6 +381,10 @@ def fetch_team_season_averages(season: int) -> pd.DataFrame:
     """
     Pull a practical subset of team season averages using valid team
     category/type pairings from the BALLDONTLIE NBA docs.
+
+    IMPORTANT:
+    We extract team_id before flattening stats and merge category/type
+    results horizontally so each team-season row keeps all feature groups.
     """
     category_type_pairs = [
         ("general", "base"),
@@ -401,6 +417,13 @@ def fetch_team_season_averages(season: int) -> pd.DataFrame:
         if df.empty:
             continue
 
+        # Extract join key first
+        if "team" in df.columns:
+            team_norm = pd.json_normalize(df["team"])
+            if "id" in team_norm.columns:
+                df["team_id"] = team_norm["id"]
+
+        # Flatten stats into prefixed feature columns
         if "stats" in df.columns:
             stats_df = pd.json_normalize(df["stats"]).add_prefix(f"team_{category}_{subtype}_")
             df = pd.concat([df.drop(columns=["stats"]), stats_df], axis=1)
@@ -412,12 +435,42 @@ def fetch_team_season_averages(season: int) -> pd.DataFrame:
             }
             df = df.rename(columns=rename_map)
 
+        base_keep_cols = ["team_id", "season", "season_type"]
+        keep_cols = [col for col in base_keep_cols if col in df.columns]
+        stat_cols = [c for c in df.columns if c.startswith(f"team_{category}_{subtype}_")]
+
+        df = df[keep_cols + stat_cols].copy()
+
+        if "team_id" not in df.columns:
+            raise KeyError(
+                f"team_id missing in team season averages response for category={category}, type={subtype}. "
+                f"Available columns: {list(df.columns)}"
+            )
+
         frames.append(df)
 
     if not frames:
         return pd.DataFrame()
 
-    result = pd.concat(frames, ignore_index=True)
+    # Merge horizontally so each team-season gets all stat groups
+    result = None
+    for df in frames:
+        join_cols = [col for col in ["team_id", "season", "season_type"] if col in df.columns]
+
+        if result is None:
+            result = df
+        else:
+            overlapping_non_keys = [
+                c for c in df.columns
+                if c in result.columns and c not in join_cols
+            ]
+            if overlapping_non_keys:
+                df = df.drop(columns=overlapping_non_keys)
+
+            result = result.merge(df, on=join_cols, how="outer")
+
+    if result is None:
+        return pd.DataFrame()
 
     if {"team_id", "season", "season_type"}.issubset(result.columns):
         result = result.drop_duplicates(

@@ -8,17 +8,16 @@ from sklearn.impute import SimpleImputer
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import mean_absolute_error, mean_squared_error
-from sklearn.model_selection import train_test_split
 
 DATA_PATH = Path("data/processed/training_features.csv")
-MODEL_PATH = Path("models/latest_points_model.joblib")
+MODEL_PATH = Path("models/enriched_points_model.joblib")
 
 
 def load_data() -> pd.DataFrame:
     if not DATA_PATH.exists():
         raise FileNotFoundError(f"Training data not found: {DATA_PATH}")
 
-    df = pd.read_csv(DATA_PATH)
+    df = pd.read_csv(DATA_PATH, low_memory=False)
     df["game_date"] = pd.to_datetime(df["game_date"], errors="coerce")
     df = df.dropna(subset=["player_name", "game_date", "points"])
     return df
@@ -52,7 +51,6 @@ def choose_features(df: pd.DataFrame) -> tuple[list[str], str]:
         "team_ctx_team_general_base_pts",
         "team_ctx_team_general_advanced_pace",
         "opp_ctx_team_general_base_pts",
-        "opp_ctx_team_general_advanced_defense_rating",
     ]
 
     features = [col for col in candidate_features if col in df.columns]
@@ -62,13 +60,63 @@ def choose_features(df: pd.DataFrame) -> tuple[list[str], str]:
     return features, target
 
 
+def coerce_feature_types(df: pd.DataFrame, features: list[str]) -> pd.DataFrame:
+    df = df.copy()
+    for col in features:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    return df
+
+
+def filter_to_enriched_rows(df: pd.DataFrame) -> pd.DataFrame:
+    required_context_cols = [
+        "home",
+        "team_ctx_team_general_base_pts",
+        "opp_ctx_team_general_base_pts",
+    ]
+
+    existing_required = [col for col in required_context_cols if col in df.columns]
+    if not existing_required:
+        raise ValueError("Required enriched context columns are missing from dataset.")
+
+    enriched_df = df.dropna(subset=existing_required).copy()
+
+    if enriched_df.empty:
+        raise ValueError("No enriched rows found after filtering.")
+
+    print(f"[INFO] Using enriched rows only: {len(enriched_df)} / {len(df)}")
+    return enriched_df
+
+
+def drop_fully_empty_features(df: pd.DataFrame, features: list[str]) -> list[str]:
+    usable = [col for col in features if df[col].notna().sum() > 0]
+
+    dropped = [col for col in features if col not in usable]
+    if dropped:
+        print(f"[INFO] Dropping fully empty features: {dropped}")
+
+    if not usable:
+        raise ValueError("All candidate features are empty after filtering.")
+
+    return usable
+
+
 def main():
     df = load_data()
     features, target = choose_features(df)
 
-    # Chronological split is better than random for sports data
+    df = coerce_feature_types(df, features)
+
+    # IMPORTANT: train only on rows with enriched context
+    df = filter_to_enriched_rows(df)
+
+    features = drop_fully_empty_features(df, features)
+
+    df = df.dropna(subset=[target]).copy()
     df = df.sort_values("game_date").reset_index(drop=True)
+
     split_idx = int(len(df) * 0.8)
+    if split_idx <= 0 or split_idx >= len(df):
+        raise ValueError(f"Not enough rows after filtering to split train/test. Rows available: {len(df)}")
 
     train_df = df.iloc[:split_idx].copy()
     test_df = df.iloc[split_idx:].copy()
@@ -77,8 +125,6 @@ def main():
     y_train = train_df[target]
     X_test = test_df[features]
     y_test = test_df[target]
-
-    numeric_features = features
 
     preprocessor = ColumnTransformer(
         transformers=[
@@ -89,7 +135,7 @@ def main():
                         ("imputer", SimpleImputer(strategy="median")),
                     ]
                 ),
-                numeric_features,
+                features,
             )
         ]
     )
@@ -123,6 +169,7 @@ def main():
     )
 
     print(f"Saved model to: {MODEL_PATH}")
+    print(f"Rows after filtering: {len(df)}")
     print(f"Train rows: {len(train_df)}")
     print(f"Test rows: {len(test_df)}")
     print(f"Features used: {features}")
