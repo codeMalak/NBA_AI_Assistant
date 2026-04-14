@@ -402,16 +402,42 @@ def prepare_standings(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         return df
 
-    if "team" in df.columns:
-        team_norm = pd.json_normalize(df["team"])
-        team_norm.columns = [f"standings_team_{c}" for c in team_norm.columns]
-        df = pd.concat([df.drop(columns=["team"]), team_norm], axis=1)
+    work = df.copy()
 
-    if {"team_id", "season"}.issubset(df.columns):
-        df = df.drop_duplicates(subset=["team_id", "season"], keep="last")
+    if "team" in work.columns:
+        parsed_rows = []
 
-    return df
+        for value in work["team"]:
+            parsed = None
 
+            if isinstance(value, dict):
+                parsed = value
+            elif isinstance(value, str):
+                try:
+                    maybe_dict = ast.literal_eval(value)
+                    if isinstance(maybe_dict, dict):
+                        parsed = maybe_dict
+                except Exception:
+                    parsed = None
+
+            parsed_rows.append(parsed)
+
+        team_norm = pd.json_normalize(parsed_rows)
+
+        if not team_norm.empty:
+            team_norm.columns = [f"standings_team_{c}" for c in team_norm.columns]
+            work = pd.concat([work.drop(columns=["team"]), team_norm], axis=1)
+
+            # Recover team_id at top level for joins
+            if "standings_team_id" in work.columns and "team_id" not in work.columns:
+                work["team_id"] = work["standings_team_id"]
+
+    if {"team_id", "season"}.issubset(work.columns):
+        work["team_id"] = pd.to_numeric(work["team_id"], errors="coerce")
+        work["season"] = pd.to_numeric(work["season"], errors="coerce")
+        work = work.drop_duplicates(subset=["team_id", "season"], keep="last")
+
+    return work
 
 def prepare_injuries(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
