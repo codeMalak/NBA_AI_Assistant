@@ -27,31 +27,56 @@ Given an NBA player, a stat, and a threshold, the app should:
 ## Quick Start
 ### Backend
 ```bash
+# 1️⃣ Navigate to backend
 cd backend
+
+# 2️⃣ Create virtual environment
 python -m venv .venv
+
+# 3️⃣ Activate environment
 # Windows PowerShell
 .venv\Scripts\Activate.ps1
+
 # macOS/Linux
 # source .venv/bin/activate
+
+# 4️⃣ Install dependencies
 pip install -r requirements.txt
-python scripts_create_sample_data.py
-python train_model.py
+
+# 5️⃣ Create a .env file inside backend/:
+# HF_API_TOKEN=your_huggingface_token
+# BALLDONTLIE_API_KEY=your_balldontlie_key
+
+# 6️⃣ Prepare Historical Dataset (Hugging Face)
+python scripts/convert_hf_dataset.py
+
+# 7️⃣ Fetch Live NBA Data
+python scripts/fetch_recent_games.py
+
+# 8️⃣ Merge Datasets
+python scripts/merge_datasets.py
+
+# 9️⃣ Train / Retrain Model
+python scripts/retrain_model.py
+
+# 🔟 Run Backend API
 python app.py
 ```
 
 ### Frontend
 ```bash
+# 1️⃣ Navigate to frontend
 cd frontend
+
+# 2️⃣ Install dependencies
 npm install
+
+# 3️⃣ Start development server
 npm run dev
 ```
 
-## Recommended Team Workflow
+
+## Team Workflow
 - Carlos: data pipeline, feature engineering, model training, Flask prediction API
 - Jonathan: retrieval logic, prompts, grounded explanation system
 - Joshua: React UI, API integration, result presentation
-
-## Important Notes
-- This scaffold uses a tiny generated sample dataset so the app can run end-to-end.
-- Replace the sample data with real NBA game logs as your next step.
-- The explanation service currently uses a template fallback. Plug in Hugging Face after the data + prediction path is working.
