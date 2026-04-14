@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import pandas as pd
+import ast
 
 HISTORICAL_PATH = Path("data/processed/historical_player_game_logs.csv")
 RECENT_PATH = Path("data/processed/recent_player_game_logs.csv")
@@ -349,13 +350,52 @@ def prepare_team_season_averages(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         return df
 
-    keep_cols = [c for c in df.columns if c != "team"]
-    df = df[keep_cols].copy()
+    work = df.copy()
 
-    if {"team_id", "season"}.issubset(df.columns):
-        df = df.drop_duplicates(subset=["team_id", "season"], keep="last")
+    # Recover team_id from serialized "team" column
+    if "team" in work.columns and "team_id" not in work.columns:
+        parsed_team_ids = []
 
-    return df
+        for value in work["team"]:
+            team_id = None
+
+            if isinstance(value, dict):
+                team_id = value.get("id")
+
+            elif isinstance(value, str):
+                try:
+                    parsed = ast.literal_eval(value)
+                    if isinstance(parsed, dict):
+                        team_id = parsed.get("id")
+                except Exception:
+                    team_id = None
+
+            parsed_team_ids.append(team_id)
+
+        work["team_id"] = parsed_team_ids
+
+    # Backup recovery: any column ending in team_id
+    if "team_id" not in work.columns:
+        for col in work.columns:
+            if col.lower().endswith("team_id") or col.lower() == "teamid":
+                work["team_id"] = work[col]
+                break
+
+    if "season" not in work.columns:
+        raise KeyError(f"season missing in team season averages")
+
+    if "team_id" not in work.columns:
+        raise KeyError(
+            f"team_id not found. Available columns: {list(work.columns)}"
+        )
+
+    work["team_id"] = pd.to_numeric(work["team_id"], errors="coerce")
+    work["season"] = pd.to_numeric(work["season"], errors="coerce")
+
+    work = work.dropna(subset=["team_id", "season"])
+    work = work.drop_duplicates(subset=["team_id", "season"], keep="last")
+
+    return work
 
 
 def prepare_standings(df: pd.DataFrame) -> pd.DataFrame:
@@ -468,8 +508,15 @@ def merge_context(game_logs: pd.DataFrame) -> pd.DataFrame:
         )
         df = df.merge(opp_inj, on="opponent_id", how="left")
 
-    df["team_injury_count"] = df.get("team_injury_count", 0).fillna(0)
-    df["opponent_injury_count"] = df.get("opponent_injury_count", 0).fillna(0)
+    if "team_injury_count" in df.columns:
+        df["team_injury_count"] = df["team_injury_count"].fillna(0)
+    else:
+        df["team_injury_count"] = 0
+
+    if "opponent_injury_count" in df.columns:
+        df["opponent_injury_count"] = df["opponent_injury_count"].fillna(0)
+    else:
+        df["opponent_injury_count"] = 0
 
     return df
 
