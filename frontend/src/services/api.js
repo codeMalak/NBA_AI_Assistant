@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_BASE = 'http://127.0.0.1:5001/api'
+const API_BASE = 'http://127.0.0.1:5000/api'
 
 export async function explainPrediction(payload) {
   const response = await axios.post(`${API_BASE}/explain`, payload)

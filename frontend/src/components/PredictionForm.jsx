@@ -24,6 +24,7 @@ export default function PredictionForm({ onSubmit, loading }) {
   const [playersError, setPlayersError] = useState('')
   const [playerName, setPlayerName] = useState('')
   const [threshold, setThreshold] = useState('20')
+  const [thresholdError, setThresholdError] = useState('')
 
   const [modelType, setModelType] = useState('baseline')
 
@@ -114,6 +115,13 @@ export default function PredictionForm({ onSubmit, loading }) {
     event.preventDefault()
     if (!selectedGame || !playerName) return
 
+    const parsedThreshold = parseFloat(threshold)
+    if (!threshold || isNaN(parsedThreshold) || parsedThreshold <= 0) {
+      setThresholdError('Threshold must be a positive number.')
+      return
+    }
+    setThresholdError('')
+
     const homeAbbr = selectedGame.home_team?.abbreviation
     const awayAbbr = selectedGame.visitor_team?.abbreviation
 
@@ -124,7 +132,7 @@ export default function PredictionForm({ onSubmit, loading }) {
     onSubmit({
       player_name: playerName,
       stat: 'points',
-      threshold: parseFloat(threshold),
+      threshold: parsedThreshold,
       model_type: modelType,
       team_abbr,
       opponent_abbr,
@@ -207,9 +215,15 @@ export default function PredictionForm({ onSubmit, loading }) {
         <input
           type="number"
           step="0.5"
+          min="0.5"
           value={threshold}
-          onChange={(e) => setThreshold(e.target.value)}
+          onChange={(e) => {
+            setThreshold(e.target.value)
+            setThresholdError('')
+          }}
+          className={thresholdError ? 'input-error' : ''}
         />
+        {thresholdError && <span className="field-error">{thresholdError}</span>}
       </label>
 
       <button type="submit" disabled={loading || !selectedGame || !playerName || playersLoading}>

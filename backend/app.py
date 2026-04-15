@@ -33,4 +33,4 @@ def debug_root_post():
     return {"error": "Unexpected POST to root"}, 404
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)

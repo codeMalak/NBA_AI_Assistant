@@ -27,6 +27,8 @@ backend/models/
 # Data files
 backend/data/processed/player_game_logs.csv
 backend/data/processed/*.csv
+backend/data/processed/**/*.csv
+backend/data/processed/live_context/
 
 # Frontend
 node_modules/
