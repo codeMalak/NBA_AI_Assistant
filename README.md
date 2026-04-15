@@ -25,6 +25,9 @@ Given an NBA player, a stat, and a threshold, the app should:
 - `docs/` architecture, API contract, implementation notes
 
 ## Quick Start
+
+Requires Python 3.12.10.
+
 ### Backend
 ```bash
 # 1️⃣ Navigate to backend
