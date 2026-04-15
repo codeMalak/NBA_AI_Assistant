@@ -13,21 +13,25 @@ export default function PredictionForm({ onSubmit, loading }) {
 
   const [selectedDate, setSelectedDate] = useState(today)
   const [games, setGames] = useState([])
+  const [gamesLoading, setGamesLoading] = useState(false)
   const lastFetchedDateRef = useRef(null)
   const [gamesError, setGamesError] = useState('')
   const [selectedGameId, setSelectedGameId] = useState('')
 
-  const [players, setPlayers] = useState([])
+  const [homePlayers, setHomePlayers] = useState([])
+  const [awayPlayers, setAwayPlayers] = useState([])
+  const [playersLoading, setPlayersLoading] = useState(false)
   const [playersError, setPlayersError] = useState('')
   const [playerName, setPlayerName] = useState('')
   const [threshold, setThreshold] = useState('20')
 
-  // ✅ NEW: model selector state
   const [modelType, setModelType] = useState('baseline')
 
   const selectedGame = useMemo(() => {
     return games.find((game) => String(game.id) === String(selectedGameId)) || null
   }, [games, selectedGameId])
+
+  const allPlayers = useMemo(() => [...homePlayers, ...awayPlayers], [homePlayers, awayPlayers])
 
   useEffect(() => {
     async function loadGames() {
@@ -35,6 +39,7 @@ export default function PredictionForm({ onSubmit, loading }) {
       lastFetchedDateRef.current = selectedDate
 
       try {
+        setGamesLoading(true)
         setGamesError('')
         const data = await getGamesByDate(selectedDate)
 
@@ -51,6 +56,8 @@ export default function PredictionForm({ onSubmit, loading }) {
         setGames([])
         setSelectedGameId('')
         setGamesError(err.response?.data?.error || err.message || 'Failed to load games')
+      } finally {
+        setGamesLoading(false)
       }
     }
 
@@ -60,28 +67,30 @@ export default function PredictionForm({ onSubmit, loading }) {
   useEffect(() => {
     async function loadPlayersForGame() {
       if (!selectedGame) {
-        setPlayers([])
+        setHomePlayers([])
+        setAwayPlayers([])
         setPlayerName('')
         return
       }
 
       try {
+        setPlayersLoading(true)
         setPlayersError('')
         const homeAbbr = selectedGame.home_team?.abbreviation
         const awayAbbr = selectedGame.visitor_team?.abbreviation
 
-        const [homePlayersRes, awayPlayersRes] = await Promise.all([
+        const [homeRes, awayRes] = await Promise.all([
           getPlayers(homeAbbr),
           getPlayers(awayAbbr),
         ])
 
-        const merged = [
-          ...(homePlayersRes.players || []),
-          ...(awayPlayersRes.players || []),
-        ]
+        const home = homeRes.players || []
+        const away = awayRes.players || []
 
-        setPlayers(merged)
+        setHomePlayers(home)
+        setAwayPlayers(away)
 
+        const merged = [...home, ...away]
         if (merged.length > 0) {
           setPlayerName(merged[0].player_name)
         } else {
@@ -89,9 +98,12 @@ export default function PredictionForm({ onSubmit, loading }) {
         }
       } catch (err) {
         console.error(err)
-        setPlayers([])
+        setHomePlayers([])
+        setAwayPlayers([])
         setPlayerName('')
         setPlayersError(err.response?.data?.error || err.message || 'Failed to load players')
+      } finally {
+        setPlayersLoading(false)
       }
     }
 
@@ -105,14 +117,13 @@ export default function PredictionForm({ onSubmit, loading }) {
     const homeAbbr = selectedGame.home_team?.abbreviation
     const awayAbbr = selectedGame.visitor_team?.abbreviation
 
-    // determine which team player is on
-    const isHomePlayer = players.find(p => p.player_name === playerName && homeAbbr)
+    const isHomePlayer = homePlayers.some((p) => p.player_name === playerName)
     const team_abbr = isHomePlayer ? homeAbbr : awayAbbr
     const opponent_abbr = isHomePlayer ? awayAbbr : homeAbbr
 
     onSubmit({
       player_name: playerName,
-      stat: "points",
+      stat: 'points',
       threshold: parseFloat(threshold),
       model_type: modelType,
       team_abbr,
@@ -132,7 +143,6 @@ export default function PredictionForm({ onSubmit, loading }) {
         </select>
       </label>
 
-      {/* ✅ FIXED MODEL DROPDOWN */}
       <label>
         Model
         <select value={modelType} onChange={(e) => setModelType(e.target.value)}>
@@ -146,9 +156,11 @@ export default function PredictionForm({ onSubmit, loading }) {
         <select
           value={selectedGameId}
           onChange={(e) => setSelectedGameId(e.target.value)}
-          disabled={games.length === 0}
+          disabled={gamesLoading || games.length === 0}
         >
-          {games.length === 0 ? (
+          {gamesLoading ? (
+            <option value="">Loading games…</option>
+          ) : games.length === 0 ? (
             <option value="">No games available</option>
           ) : (
             games.map((game) => (
@@ -167,12 +179,14 @@ export default function PredictionForm({ onSubmit, loading }) {
         <select
           value={playerName}
           onChange={(e) => setPlayerName(e.target.value)}
-          disabled={players.length === 0}
+          disabled={playersLoading || allPlayers.length === 0}
         >
-          {players.length === 0 ? (
+          {playersLoading ? (
+            <option value="">Loading players…</option>
+          ) : allPlayers.length === 0 ? (
             <option value="">No players available</option>
           ) : (
-            players.map((player, index) => (
+            allPlayers.map((player, index) => (
               <option key={`${player.player_name}-${index}`} value={player.player_name}>
                 {player.player_name}
               </option>
@@ -198,8 +212,8 @@ export default function PredictionForm({ onSubmit, loading }) {
         />
       </label>
 
-      <button type="submit" disabled={loading || !selectedGame || !playerName}>
-        {loading ? 'Analyzing...' : 'Predict'}
+      <button type="submit" disabled={loading || !selectedGame || !playerName || playersLoading}>
+        {loading ? 'Analyzing…' : 'Predict'}
       </button>
     </form>
   )

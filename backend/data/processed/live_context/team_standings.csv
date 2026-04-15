@@ -1,0 +1,31 @@
+team,conference_record,conference_rank,division_record,division_rank,wins,losses,home_record,road_record,season
+"{'id': 16, 'conference': 'East', 'division': 'Southeast', 'city': 'Miami', 'name': 'Heat', 'full_name': 'Miami Heat', 'abbreviation': 'MIA'}",27-25,10,10-7,4,43,39,26-15,17-24,2025
+"{'id': 10, 'conference': 'West', 'division': 'Pacific', 'city': 'Golden State', 'name': 'Warriors', 'full_name': 'Golden State Warriors', 'abbreviation': 'GSW'}",24-28,10,7-9,4,37,45,22-19,15-26,2025
+"{'id': 21, 'conference': 'West', 'division': 'Northwest', 'city': 'Oklahoma City', 'name': 'Thunder', 'full_name': 'Oklahoma City Thunder', 'abbreviation': 'OKC'}",41-11,1,12-4,1,64,18,34-7,30-10,2025
+"{'id': 9, 'conference': 'East', 'division': 'Central', 'city': 'Detroit', 'name': 'Pistons', 'full_name': 'Detroit Pistons', 'abbreviation': 'DET'}",39-13,1,12-4,1,60,22,31-9,28-13,2025
+"{'id': 20, 'conference': 'East', 'division': 'Atlantic', 'city': 'New York', 'name': 'Knicks', 'full_name': 'New York Knicks', 'abbreviation': 'NYK'}",35-17,3,14-3,2,53,29,30-10,22-19,2025
+"{'id': 27, 'conference': 'West', 'division': 'Southwest', 'city': 'San Antonio', 'name': 'Spurs', 'full_name': 'San Antonio Spurs', 'abbreviation': 'SAS'}",36-16,2,13-3,1,62,20,32-8,29-12,2025
+"{'id': 2, 'conference': 'East', 'division': 'Atlantic', 'city': 'Boston', 'name': 'Celtics', 'full_name': 'Boston Celtics', 'abbreviation': 'BOS'}",36-16,2,10-6,1,56,26,30-11,26-15,2025
+"{'id': 8, 'conference': 'West', 'division': 'Northwest', 'city': 'Denver', 'name': 'Nuggets', 'full_name': 'Denver Nuggets', 'abbreviation': 'DEN'}",36-16,3,11-5,2,54,28,28-13,26-15,2025
+"{'id': 11, 'conference': 'West', 'division': 'Southwest', 'city': 'Houston', 'name': 'Rockets', 'full_name': 'Houston Rockets', 'abbreviation': 'HOU'}",29-23,5,10-6,2,52,30,30-11,22-19,2025
+"{'id': 28, 'conference': 'East', 'division': 'Atlantic', 'city': 'Toronto', 'name': 'Raptors', 'full_name': 'Toronto Raptors', 'abbreviation': 'TOR'}",33-19,5,5-12,3,46,36,24-17,22-19,2025
+"{'id': 6, 'conference': 'East', 'division': 'Central', 'city': 'Cleveland', 'name': 'Cavaliers', 'full_name': 'Cleveland Cavaliers', 'abbreviation': 'CLE'}",33-19,4,11-5,2,52,30,27-14,25-16,2025
+"{'id': 18, 'conference': 'West', 'division': 'Northwest', 'city': 'Minnesota', 'name': 'Timberwolves', 'full_name': 'Minnesota Timberwolves', 'abbreviation': 'MIN'}",31-21,6,9-7,3,49,33,26-15,23-18,2025
+"{'id': 14, 'conference': 'West', 'division': 'Pacific', 'city': 'Los Angeles', 'name': 'Lakers', 'full_name': 'Los Angeles Lakers', 'abbreviation': 'LAL'}",33-19,4,10-7,1,53,29,28-13,25-16,2025
+"{'id': 23, 'conference': 'East', 'division': 'Atlantic', 'city': 'Philadelphia', 'name': '76ers', 'full_name': 'Philadelphia 76ers', 'abbreviation': 'PHI'}",27-25,7,9-7,4,45,37,23-18,22-19,2025
+"{'id': 24, 'conference': 'West', 'division': 'Pacific', 'city': 'Phoenix', 'name': 'Suns', 'full_name': 'Phoenix Suns', 'abbreviation': 'PHX'}",29-23,7,10-7,2,45,37,25-16,20-21,2025
+"{'id': 4, 'conference': 'East', 'division': 'Southeast', 'city': 'Charlotte', 'name': 'Hornets', 'full_name': 'Charlotte Hornets', 'abbreviation': 'CHA'}",26-26,9,11-5,3,44,38,21-20,23-18,2025
+"{'id': 17, 'conference': 'East', 'division': 'Central', 'city': 'Milwaukee', 'name': 'Bucks', 'full_name': 'Milwaukee Bucks', 'abbreviation': 'MIL'}",21-31,11,9-7,3,32,50,19-22,13-28,2025
+"{'id': 22, 'conference': 'East', 'division': 'Southeast', 'city': 'Orlando', 'name': 'Magic', 'full_name': 'Orlando Magic', 'abbreviation': 'ORL'}",26-26,8,9-8,2,45,37,25-15,19-20,2025
+"{'id': 13, 'conference': 'West', 'division': 'Pacific', 'city': 'LA', 'name': 'Clippers', 'full_name': 'LA Clippers', 'abbreviation': 'LAC'}",25-27,9,10-6,3,42,40,23-18,19-22,2025
+"{'id': 5, 'conference': 'East', 'division': 'Central', 'city': 'Chicago', 'name': 'Bulls', 'full_name': 'Chicago Bulls', 'abbreviation': 'CHI'}",19-32,12,4-12,4,31,51,18-23,13-28,2025
+"{'id': 25, 'conference': 'West', 'division': 'Northwest', 'city': 'Portland', 'name': 'Trail Blazers', 'full_name': 'Portland Trail Blazers', 'abbreviation': 'POR'}",29-23,8,7-9,4,42,40,24-17,18-23,2025
+"{'id': 1, 'conference': 'East', 'division': 'Southeast', 'city': 'Atlanta', 'name': 'Hawks', 'full_name': 'Atlanta Hawks', 'abbreviation': 'ATL'}",27-25,6,9-7,1,46,36,24-17,22-19,2025
+"{'id': 15, 'conference': 'West', 'division': 'Southwest', 'city': 'Memphis', 'name': 'Grizzlies', 'full_name': 'Memphis Grizzlies', 'abbreviation': 'MEM'}",19-33,13,6-10,5,25,57,13-27,11-29,2025
+"{'id': 19, 'conference': 'West', 'division': 'Southwest', 'city': 'New Orleans', 'name': 'Pelicans', 'full_name': 'New Orleans Pelicans', 'abbreviation': 'NOP'}",17-34,11,7-9,3,26,56,17-24,9-32,2025
+"{'id': 26, 'conference': 'West', 'division': 'Pacific', 'city': 'Sacramento', 'name': 'Kings', 'full_name': 'Sacramento Kings', 'abbreviation': 'SAC'}",14-38,14,4-12,5,22,60,15-26,7-34,2025
+"{'id': 12, 'conference': 'East', 'division': 'Central', 'city': 'Indiana', 'name': 'Pacers', 'full_name': 'Indiana Pacers', 'abbreviation': 'IND'}",15-37,14,4-12,5,19,63,11-30,8-33,2025
+"{'id': 7, 'conference': 'West', 'division': 'Southwest', 'city': 'Dallas', 'name': 'Mavericks', 'full_name': 'Dallas Mavericks', 'abbreviation': 'DAL'}",14-37,12,4-12,4,26,56,16-25,10-30,2025
+"{'id': 3, 'conference': 'East', 'division': 'Atlantic', 'city': 'Brooklyn', 'name': 'Nets', 'full_name': 'Brooklyn Nets', 'abbreviation': 'BKN'}",14-37,13,3-13,5,20,62,12-29,8-33,2025
+"{'id': 29, 'conference': 'West', 'division': 'Northwest', 'city': 'Utah', 'name': 'Jazz', 'full_name': 'Utah Jazz', 'abbreviation': 'UTA'}",12-40,15,1-15,5,22,60,14-27,8-33,2025
+"{'id': 30, 'conference': 'East', 'division': 'Southeast', 'city': 'Washington', 'name': 'Wizards', 'full_name': 'Washington Wizards', 'abbreviation': 'WAS'}",11-41,15,2-14,5,17,65,11-30,6-35,2025
