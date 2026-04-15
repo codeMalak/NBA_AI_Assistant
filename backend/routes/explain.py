@@ -5,7 +5,7 @@ from services.retrieval_service import build_player_context
 from services.prompt_service import build_explanation_prompt
 from services.llm_service import generate_explanation_with_hf
 from services.template_service import template_explain
-
+import traceback
 explain_bp = Blueprint("explain", __name__)
 
 
@@ -65,7 +65,11 @@ def explain():
             explanation = generate_explanation_with_hf(prompt)
             explanation_type = "llm"
         except Exception as llm_exc:
-            print(f"LLM failed, falling back to template: {llm_exc}")
+            print("LLM failed, falling back to template")
+            print("Exception type:", type(llm_exc).__name__)
+            print("Exception repr:", repr(llm_exc))
+            traceback.print_exc()
+
             explanation = template_explain(context)
             explanation_type = "template"
 

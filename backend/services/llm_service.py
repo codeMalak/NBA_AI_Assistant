@@ -2,47 +2,66 @@ from __future__ import annotations
 
 import os
 from dotenv import load_dotenv
-from openai import OpenAI
+from huggingface_hub import InferenceClient
 
 load_dotenv()
 
 HF_TOKEN = os.getenv("HF_API_TOKEN") or os.getenv("HF_TOKEN")
+HF_MODEL = "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B"
 
-# Pick one provider-backed model string from HF supported models.
-HF_MODEL = "google/gemma-4-31B-it:novita"
 
-client = OpenAI(
-    base_url="https://router.huggingface.co/v1",
-    api_key=HF_TOKEN,
-)
+def _build_user_prompt(prompt: str) -> str:
+    return (
+        "You are an NBA analytics assistant.\n"
+        "Use only the provided facts.\n"
+        "Do not invent injuries, rankings, matchup details, or statistics.\n\n"
+        f"{prompt}"
+    )
 
 
 def generate_explanation_with_hf(prompt: str) -> str:
     if not HF_TOKEN:
         raise ValueError("HF_API_TOKEN or HF_TOKEN is missing from .env")
 
-    completion = client.chat.completions.create(
-        model=HF_MODEL,
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You are an NBA analytics assistant. "
-                    "Use only the provided facts. "
-                    "Do not invent injuries, rankings, matchup details, or statistics."
-                ),
-            },
-            {
-                "role": "user",
-                "content": prompt,
-            },
-        ],
-        max_tokens=180,
-        temperature=0.7,
+    client = InferenceClient(
+        token=HF_TOKEN,
+        provider="auto",
     )
 
-    message = completion.choices[0].message.content
-    if not message or not isinstance(message, str):
-        raise ValueError(f"Unexpected Hugging Face response: {completion}")
+    user_prompt = _build_user_prompt(prompt)
 
-    return message.strip()
+    try:
+        completion = client.chat.completions.create(
+            model=HF_MODEL,
+            messages=[
+                {
+                    "role": "user",
+                    "content": user_prompt,
+                }
+            ],
+            max_tokens=180,
+            temperature=0.6,
+        )
+    except Exception as exc:
+        raise RuntimeError(
+            f"Hugging Face chat completion failed for model '{HF_MODEL}': {repr(exc)}"
+        ) from exc
+
+    try:
+        message_obj = completion.choices[0].message
+    except Exception as exc:
+        raise RuntimeError(
+            f"Unexpected Hugging Face response structure for model '{HF_MODEL}': {repr(completion)}"
+        ) from exc
+
+    content = getattr(message_obj, "content", None)
+    reasoning_content = getattr(message_obj, "reasoning_content", None)
+
+    final_text = content or reasoning_content
+
+    if not final_text or not isinstance(final_text, str):
+        raise RuntimeError(
+            f"Empty or invalid LLM message returned for model '{HF_MODEL}': {repr(completion)}"
+        )
+
+    return final_text.strip()
