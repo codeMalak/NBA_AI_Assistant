@@ -11,7 +11,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 DATA_PATH = Path("data/processed/feature_store_points.csv")
 MODEL_PATH = Path("models/enriched_points_model.joblib")
-cd frozenset
+
 
 def load_data() -> pd.DataFrame:
     if not DATA_PATH.exists():
