@@ -5,37 +5,34 @@ function formatDate(date) {
   return date.toISOString().slice(0, 10)
 }
 
-function buildNext7Days() {
-  const days = []
-  const base = new Date()
-
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(base)
-    d.setDate(base.getDate() + i)
-    days.push(formatDate(d))
-  }
-
-  return days
-}
-
 export default function PredictionForm({ onSubmit, loading }) {
-  const dateOptions = useMemo(() => buildNext7Days(), [])
-  const [selectedDate, setSelectedDate] = useState(dateOptions[0])
+  const today = formatDate(new Date())
+  const tomorrowDate = new Date()
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1)
+  const tomorrow = formatDate(tomorrowDate)
 
+  const [selectedDate, setSelectedDate] = useState(today)
   const [games, setGames] = useState([])
+  const [gamesLoading, setGamesLoading] = useState(false)
   const lastFetchedDateRef = useRef(null)
   const [gamesError, setGamesError] = useState('')
   const [selectedGameId, setSelectedGameId] = useState('')
 
-  const [players, setPlayers] = useState([])
+  const [homePlayers, setHomePlayers] = useState([])
+  const [awayPlayers, setAwayPlayers] = useState([])
+  const [playersLoading, setPlayersLoading] = useState(false)
   const [playersError, setPlayersError] = useState('')
   const [playerName, setPlayerName] = useState('')
   const [threshold, setThreshold] = useState('20')
+  const [thresholdError, setThresholdError] = useState('')
+
   const [modelType, setModelType] = useState('baseline')
 
   const selectedGame = useMemo(() => {
     return games.find((game) => String(game.id) === String(selectedGameId)) || null
   }, [games, selectedGameId])
+
+  const allPlayers = useMemo(() => [...homePlayers, ...awayPlayers], [homePlayers, awayPlayers])
 
   useEffect(() => {
     async function loadGames() {
@@ -43,6 +40,7 @@ export default function PredictionForm({ onSubmit, loading }) {
       lastFetchedDateRef.current = selectedDate
 
       try {
+        setGamesLoading(true)
         setGamesError('')
         const data = await getGamesByDate(selectedDate)
 
@@ -59,6 +57,8 @@ export default function PredictionForm({ onSubmit, loading }) {
         setGames([])
         setSelectedGameId('')
         setGamesError(err.response?.data?.error || err.message || 'Failed to load games')
+      } finally {
+        setGamesLoading(false)
       }
     }
 
@@ -68,29 +68,30 @@ export default function PredictionForm({ onSubmit, loading }) {
   useEffect(() => {
     async function loadPlayersForGame() {
       if (!selectedGame) {
-        setPlayers([])
+        setHomePlayers([])
+        setAwayPlayers([])
         setPlayerName('')
         return
       }
 
       try {
+        setPlayersLoading(true)
         setPlayersError('')
-
         const homeAbbr = selectedGame.home_team?.abbreviation
         const awayAbbr = selectedGame.visitor_team?.abbreviation
 
-        const [homePlayersRes, awayPlayersRes] = await Promise.all([
+        const [homeRes, awayRes] = await Promise.all([
           getPlayers(homeAbbr),
           getPlayers(awayAbbr),
         ])
 
-        const merged = [
-          ...(homePlayersRes.players || []),
-          ...(awayPlayersRes.players || []),
-        ]
+        const home = homeRes.players || []
+        const away = awayRes.players || []
 
-        setPlayers(merged)
+        setHomePlayers(home)
+        setAwayPlayers(away)
 
+        const merged = [...home, ...away]
         if (merged.length > 0) {
           setPlayerName(merged[0].player_name)
         } else {
@@ -98,9 +99,12 @@ export default function PredictionForm({ onSubmit, loading }) {
         }
       } catch (err) {
         console.error(err)
-        setPlayers([])
+        setHomePlayers([])
+        setAwayPlayers([])
         setPlayerName('')
         setPlayersError(err.response?.data?.error || err.message || 'Failed to load players')
+      } finally {
+        setPlayersLoading(false)
       }
     }
 
@@ -111,17 +115,24 @@ export default function PredictionForm({ onSubmit, loading }) {
     event.preventDefault()
     if (!selectedGame || !playerName) return
 
+    const parsedThreshold = parseFloat(threshold)
+    if (!threshold || isNaN(parsedThreshold) || parsedThreshold <= 0) {
+      setThresholdError('Threshold must be a positive number.')
+      return
+    }
+    setThresholdError('')
+
     const homeAbbr = selectedGame.home_team?.abbreviation
     const awayAbbr = selectedGame.visitor_team?.abbreviation
 
-    const selectedPlayerObj = players.find((p) => p.player_name === playerName)
-    const team_abbr = selectedPlayerObj?.team_abbr || homeAbbr
-    const opponent_abbr = team_abbr === homeAbbr ? awayAbbr : homeAbbr
+    const isHomePlayer = homePlayers.some((p) => p.player_name === playerName)
+    const team_abbr = isHomePlayer ? homeAbbr : awayAbbr
+    const opponent_abbr = isHomePlayer ? awayAbbr : homeAbbr
 
     onSubmit({
       player_name: playerName,
       stat: 'points',
-      threshold: parseFloat(threshold),
+      threshold: parsedThreshold,
       model_type: modelType,
       team_abbr,
       opponent_abbr,
@@ -135,11 +146,8 @@ export default function PredictionForm({ onSubmit, loading }) {
       <label>
         Date
         <select value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)}>
-          {dateOptions.map((date) => (
-            <option key={date} value={date}>
-              {date}
-            </option>
-          ))}
+          <option value={today}>Today ({today})</option>
+          <option value={tomorrow}>Tomorrow ({tomorrow})</option>
         </select>
       </label>
 
@@ -156,9 +164,11 @@ export default function PredictionForm({ onSubmit, loading }) {
         <select
           value={selectedGameId}
           onChange={(e) => setSelectedGameId(e.target.value)}
-          disabled={games.length === 0}
+          disabled={gamesLoading || games.length === 0}
         >
-          {games.length === 0 ? (
+          {gamesLoading ? (
+            <option value="">Loading games…</option>
+          ) : games.length === 0 ? (
             <option value="">No games available</option>
           ) : (
             games.map((game) => (
@@ -177,12 +187,14 @@ export default function PredictionForm({ onSubmit, loading }) {
         <select
           value={playerName}
           onChange={(e) => setPlayerName(e.target.value)}
-          disabled={players.length === 0}
+          disabled={playersLoading || allPlayers.length === 0}
         >
-          {players.length === 0 ? (
+          {playersLoading ? (
+            <option value="">Loading players…</option>
+          ) : allPlayers.length === 0 ? (
             <option value="">No players available</option>
           ) : (
-            players.map((player, index) => (
+            allPlayers.map((player, index) => (
               <option key={`${player.player_name}-${index}`} value={player.player_name}>
                 {player.player_name}
               </option>
@@ -203,13 +215,19 @@ export default function PredictionForm({ onSubmit, loading }) {
         <input
           type="number"
           step="0.5"
+          min="0.5"
           value={threshold}
-          onChange={(e) => setThreshold(e.target.value)}
+          onChange={(e) => {
+            setThreshold(e.target.value)
+            setThresholdError('')
+          }}
+          className={thresholdError ? 'input-error' : ''}
         />
+        {thresholdError && <span className="field-error">{thresholdError}</span>}
       </label>
 
-      <button type="submit" disabled={loading || !selectedGame || !playerName}>
-        {loading ? 'Analyzing...' : 'Predict'}
+      <button type="submit" disabled={loading || !selectedGame || !playerName || playersLoading}>
+        {loading ? 'Analyzing…' : 'Predict'}
       </button>
     </form>
   )
