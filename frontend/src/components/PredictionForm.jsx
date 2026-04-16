@@ -5,13 +5,23 @@ function formatDate(date) {
   return date.toISOString().slice(0, 10)
 }
 
-export default function PredictionForm({ onSubmit, loading }) {
-  const today = formatDate(new Date())
-  const tomorrowDate = new Date()
-  tomorrowDate.setDate(tomorrowDate.getDate() + 1)
-  const tomorrow = formatDate(tomorrowDate)
+function buildNext7Days() {
+  const days = []
+  const base = new Date()
 
-  const [selectedDate, setSelectedDate] = useState(today)
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(base)
+    d.setDate(base.getDate() + i)
+    days.push(formatDate(d))
+  }
+
+  return days
+}
+
+export default function PredictionForm({ onSubmit, loading }) {
+  const dateOptions = useMemo(() => buildNext7Days(), [])
+  const [selectedDate, setSelectedDate] = useState(dateOptions[0])
+
   const [games, setGames] = useState([])
   const lastFetchedDateRef = useRef(null)
   const [gamesError, setGamesError] = useState('')
@@ -21,8 +31,6 @@ export default function PredictionForm({ onSubmit, loading }) {
   const [playersError, setPlayersError] = useState('')
   const [playerName, setPlayerName] = useState('')
   const [threshold, setThreshold] = useState('20')
-
-  // ✅ NEW: model selector state
   const [modelType, setModelType] = useState('baseline')
 
   const selectedGame = useMemo(() => {
@@ -67,6 +75,7 @@ export default function PredictionForm({ onSubmit, loading }) {
 
       try {
         setPlayersError('')
+
         const homeAbbr = selectedGame.home_team?.abbreviation
         const awayAbbr = selectedGame.visitor_team?.abbreviation
 
@@ -105,14 +114,13 @@ export default function PredictionForm({ onSubmit, loading }) {
     const homeAbbr = selectedGame.home_team?.abbreviation
     const awayAbbr = selectedGame.visitor_team?.abbreviation
 
-    // determine which team player is on
-    const isHomePlayer = players.find(p => p.player_name === playerName && homeAbbr)
-    const team_abbr = isHomePlayer ? homeAbbr : awayAbbr
-    const opponent_abbr = isHomePlayer ? awayAbbr : homeAbbr
+    const selectedPlayerObj = players.find((p) => p.player_name === playerName)
+    const team_abbr = selectedPlayerObj?.team_abbr || homeAbbr
+    const opponent_abbr = team_abbr === homeAbbr ? awayAbbr : homeAbbr
 
     onSubmit({
       player_name: playerName,
-      stat: "points",
+      stat: 'points',
       threshold: parseFloat(threshold),
       model_type: modelType,
       team_abbr,
@@ -127,12 +135,14 @@ export default function PredictionForm({ onSubmit, loading }) {
       <label>
         Date
         <select value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)}>
-          <option value={today}>Today ({today})</option>
-          <option value={tomorrow}>Tomorrow ({tomorrow})</option>
+          {dateOptions.map((date) => (
+            <option key={date} value={date}>
+              {date}
+            </option>
+          ))}
         </select>
       </label>
 
-      {/* ✅ FIXED MODEL DROPDOWN */}
       <label>
         Model
         <select value={modelType} onChange={(e) => setModelType(e.target.value)}>

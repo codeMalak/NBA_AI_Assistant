@@ -9,9 +9,9 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
-DATA_PATH = Path("data/processed/training_features.csv")
+DATA_PATH = Path("data/processed/feature_store_points.csv")
 MODEL_PATH = Path("models/enriched_points_model.joblib")
-
+cd frozenset
 
 def load_data() -> pd.DataFrame:
     if not DATA_PATH.exists():
@@ -55,7 +55,7 @@ def choose_features(df: pd.DataFrame) -> tuple[list[str], str]:
 
     features = [col for col in candidate_features if col in df.columns]
     if not features:
-        raise ValueError("No enriched features found in training_features.csv")
+        raise ValueError("No enriched features found in dataset")
 
     return features, target
 
