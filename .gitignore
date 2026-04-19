@@ -11,7 +11,7 @@ __pycache__/
 .venv/
 venv/
 env/
-.pyenv
+.python-version
 
 # Python build artifacts
 *.egg-info/

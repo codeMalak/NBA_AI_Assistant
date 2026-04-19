@@ -1,5 +1,8 @@
 from flask import Blueprint, jsonify, request
 
+from services.prompt_service import build_explanation_prompt
+from services.llm_service import generate_explanation_with_hf
+
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
