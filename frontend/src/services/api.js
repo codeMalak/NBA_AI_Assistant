@@ -18,5 +18,7 @@ export async function getPlayers(team) {
   const response = await axios.get(`${API_BASE}/players`, {
     params: { team },
   })
+  console.log("getPlayers: ")
+  console.log(response.data)
   return response.data
 }
