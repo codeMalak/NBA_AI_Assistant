@@ -47,12 +47,11 @@ PROCESSED_PATH = os.path.join(BASE_DIR, "data", "processed", "player_game_logs.c
 SAMPLE_PATH = os.path.join(BASE_DIR, "data", "processed", "nba_player_games_sample.csv")
 PLAYER_ROSTER_PATH = os.path.join(BASE_DIR, "data", "processed", "player_roster.csv")
 
-def load_players():
-    df = pd.read_csv(PLAYER_ROSTER_PATH)
-    data = df.to_dict(orient="records")
+def load_players() -> pd.DataFrame:
+    df = pd.read_csv(PLAYER_ROSTER_PATH).fillna("")
 
-    print(json.dumps(data, indent=2))
-    return data
+    # print(df)
+    return df
 
 def load_games() -> pd.DataFrame:
     # ONLY for UI usage
