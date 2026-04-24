@@ -39,7 +39,7 @@ def generate_explanation_with_hf(prompt: str) -> str:
                     "content": user_prompt,
                 }
             ],
-            max_tokens=180,
+            max_tokens=350,
             temperature=0.6,
         )
     except Exception as exc:
@@ -64,4 +64,23 @@ def generate_explanation_with_hf(prompt: str) -> str:
             f"Empty or invalid LLM message returned for model '{HF_MODEL}': {repr(completion)}"
         )
 
-    return final_text.strip()
+    return clean_explanation(final_text)
+
+def clean_explanation(text: str) -> str:
+    banned_starts = [
+        "Okay,",
+        "Alright,",
+        "I need to",
+        "Let me",
+    ]
+
+    cleaned = text.strip()
+
+    for phrase in banned_starts:
+        if cleaned.startswith(phrase):
+            # Try to cut to the first real sentence after the intro
+            parts = cleaned.split(". ", 1)
+            if len(parts) > 1:
+                cleaned = parts[1].strip()
+
+    return cleaned

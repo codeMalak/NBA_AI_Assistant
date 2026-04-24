@@ -60,6 +60,22 @@ def choose_features(df: pd.DataFrame) -> tuple[list[str], str]:
         "odds_visitor_odds_best",
         "odds_spread_range",
         "odds_total_range",
+        "starter_flag",
+        "bench_flag",
+        "team_lineup_starters_count",
+        "team_lineup_bench_count",
+        "opp_lineup_starters_count",
+        "opp_lineup_bench_count",
+        "team_injured_count",
+        "team_starter_injured_count",
+        "team_injured_minutes_lost",
+        "team_injured_points_lost",
+        "opponent_injured_count",
+        "opponent_starter_injured_count",
+        "opponent_injured_minutes_lost",
+        "opponent_injured_points_lost",
+        "role_boost_flag",
+        "role_boost_score",
     ]
 
     features = [col for col in candidate_features if col in df.columns]

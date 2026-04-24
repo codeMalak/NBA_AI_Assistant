@@ -14,7 +14,7 @@ BASE_URL = "https://api.balldontlie.io"
 DEFAULT_PER_PAGE = 100
 
 # GOAT = 600 req/min. Stay comfortably under that.
-MIN_SECONDS_BETWEEN_REQUESTS = 0.12
+MIN_SECONDS_BETWEEN_REQUESTS = 0.25
 _last_request_ts = 0.0
 
 
@@ -39,14 +39,33 @@ def throttle() -> None:
 
 def request_json(
     path: str,
-    params: dict[str, Any] | list[tuple[str, Any]] | None = None,
+    params=None,
     timeout: int = 60,
-) -> dict[str, Any]:
-    throttle()
+    max_retries: int = 8,
+):
     url = f"{BASE_URL}{path}"
-    response = requests.get(url, headers=get_headers(), params=params, timeout=timeout)
-    response.raise_for_status()
-    return response.json()
+
+    for attempt in range(max_retries):
+        throttle()
+
+        response = requests.get(
+            url,
+            headers=get_headers(),
+            params=params,
+            timeout=timeout,
+        )
+
+        if response.status_code in (429, 500, 502, 503):
+            sleep_seconds = min(60, 2 ** attempt)
+
+            print(f"[RETRY] {response.status_code} error. Sleeping {sleep_seconds}s...")
+            time.sleep(sleep_seconds)
+            continue
+
+        response.raise_for_status()
+        return response.json()
+
+    raise RuntimeError(f"Max retries exceeded for {url}")
 
 
 def fetch_paginated(

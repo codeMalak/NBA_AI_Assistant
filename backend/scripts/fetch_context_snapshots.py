@@ -138,8 +138,29 @@ def fetch_standings(season: int) -> pd.DataFrame:
 
 
 def fetch_injuries() -> pd.DataFrame:
-    rows = fetch_paginated("/v1/player_injuries")
-    return pd.DataFrame(rows)
+    rows = fetch_paginated("/nba/v1/player_injuries")
+    return flatten_injuries(rows)
+
+
+def flatten_injuries(rows: list[dict]) -> pd.DataFrame:
+    flattened = []
+
+    for row in rows:
+        player = row.get("player") or {}
+        team = player.get("team") or {}
+
+        flattened.append({
+            "player_id": player.get("id"),
+            "player_name": f'{player.get("first_name", "")} {player.get("last_name", "")}'.strip(),
+            "team_id": player.get("team_id") or team.get("id"),
+            "team_abbr": team.get("abbreviation"),
+            "player_position": player.get("position"),
+            "return_date": row.get("return_date"),
+            "injury_description": row.get("description"),
+            "injury_status": row.get("status"),
+        })
+
+    return pd.DataFrame(flattened)
 
 
 def fetch_active_players() -> pd.DataFrame:

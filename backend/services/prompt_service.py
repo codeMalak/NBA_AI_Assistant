@@ -70,12 +70,36 @@ Prediction:
 - Probability of exceeding threshold: {context["probability_percent"]}%
 """
 
+    lineup_injury_section = f"""
+    Lineup and Injury Context:
+    - Starter flag: {_fmt(context.get("starter_flag"))}
+    - Bench flag: {_fmt(context.get("bench_flag"))}
+    - Team injured count: {_fmt(context.get("team_injured_count"))}
+    - Team starter-level injuries: {_fmt(context.get("team_starter_injured_count"))}
+    - Estimated team minutes lost to injuries: {_fmt(context.get("team_injured_minutes_lost"))}
+    - Estimated team points lost to injuries: {_fmt(context.get("team_injured_points_lost"))}
+    - Opponent injured count: {_fmt(context.get("opponent_injured_count"))}
+    - Opponent starter-level injuries: {_fmt(context.get("opponent_starter_injured_count"))}
+    - Role boost flag: {_fmt(context.get("role_boost_flag"))}
+    - Role boost score: {_fmt(context.get("role_boost_score"))}
+    """
+
     return f"""
 You are an NBA analytics assistant.
 
 Your job is to explain whether this prediction is reasonable using ONLY the facts provided below.
 
 Rules:
+- If a player is starting while a starter-level teammate is injured, explain that his role, minutes, and shot opportunities may increase.
+- If key opponent players are injured, explain how that may weaken defensive resistance or change pace.
+- Do not claim a specific player is injured unless the injury data explicitly says so.
+- Treat injury impact as an opportunity signal, not a guarantee.
+- Do not explain your reasoning step by step.
+- Do not say "I need to", "Let me", "First", or "step by step".
+- Do not repeat raw stats already shown in the UI.
+- Give only the final user-facing explanation.
+- Keep the answer to exactly 4 complete sentences.
+- Each sentence must be concise.
 - Do not invent injuries, rankings, defenders, matchups, or statistics.
 - If some context is missing, do not guess. Simply rely on the available facts.
 - Pay special attention to recent performance, matchup difficulty, home/away context, playoff intensity, and opponent-specific history.
@@ -98,5 +122,5 @@ Rules:
 
 {playoff_section}
 
-Now explain why this prediction is reasonable or not reasonable in this matchup.
+Write the final explanation only. Do not include internal reasoning. Keep it to exactly 4 complete sentences.
 """.strip()

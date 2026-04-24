@@ -99,7 +99,27 @@ def main():
         raise FileNotFoundError(f"Missing {GAMES_PATH}. Run fetch_historical_games.py first.")
 
     games_df = pd.read_csv(GAMES_PATH, low_memory=False)
-    game_ids = games_df["game_id"].dropna().astype(int).unique().tolist()
+    existing_game_ids = set()
+
+    if OUTPUT_PATH.exists():
+        existing_df = pd.read_csv(OUTPUT_PATH, low_memory=False)
+
+        if "game_id" in existing_df.columns:
+            existing_game_ids = set(
+                existing_df["game_id"]
+                .dropna()
+                .astype(int)
+                .unique()
+                .tolist()
+            )
+
+        print(f"Existing game_ids with stats: {len(existing_game_ids)}")
+
+    all_game_ids = games_df["game_id"].dropna().astype(int).unique().tolist()
+    game_ids = [gid for gid in all_game_ids if gid not in existing_game_ids]
+
+    print(f"Total game_ids in schedule: {len(all_game_ids)}")
+    print(f"Game_ids still needing stats: {len(game_ids)}")
 
     all_rows = []
 
@@ -115,11 +135,27 @@ def main():
         rows = fetch_paginated("/nba/v1/stats", params=params)
         all_rows.extend(rows)
 
-    df = flatten_stats(all_rows)
-    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(OUTPUT_PATH, index=False)
+    new_df = flatten_stats(all_rows)
 
-    print(f"Saved {len(df)} stats rows to {OUTPUT_PATH}")
+    if OUTPUT_PATH.exists():
+        old_df = pd.read_csv(OUTPUT_PATH, low_memory=False)
+
+        final_df = pd.concat([old_df, new_df], ignore_index=True)
+
+        # One stat row per player per game
+        if {"game_id", "player_id"}.issubset(final_df.columns):
+            final_df = final_df.drop_duplicates(
+                subset=["game_id", "player_id"],
+                keep="last"
+            )
+    else:
+        final_df = new_df
+
+    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    final_df.to_csv(OUTPUT_PATH, index=False)
+
+    print(f"Added {len(new_df)} new stats rows")
+    print(f"Saved {len(final_df)} total stats rows to {OUTPUT_PATH}")
 
 
 if __name__ == "__main__":

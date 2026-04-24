@@ -48,10 +48,19 @@ SAMPLE_PATH = os.path.join(BASE_DIR, "data", "processed", "nba_player_games_samp
 PLAYER_ROSTER_PATH = os.path.join(BASE_DIR, "data", "processed", "player_roster.csv")
 
 def load_players() -> pd.DataFrame:
-    df = pd.read_csv(PLAYER_ROSTER_PATH).fillna("")
+    if os.path.exists(PLAYER_ROSTER_PATH):
+        return pd.read_csv(PLAYER_ROSTER_PATH, low_memory=False).fillna("")
 
-    # print(df)
-    return df
+    # Fallback: build player list from existing game data
+    df = load_games()
+
+    keep_cols = [c for c in ["player_name", "team_abbr", "team_id", "team_name", "game_id"] if c in df.columns]
+    if not keep_cols:
+        raise FileNotFoundError(
+            f"Missing {PLAYER_ROSTER_PATH} and could not build players from load_games()."
+        )
+
+    return df[keep_cols].dropna(subset=["player_name"]).drop_duplicates().fillna("")
 
 def load_games() -> pd.DataFrame:
     # ONLY for UI usage

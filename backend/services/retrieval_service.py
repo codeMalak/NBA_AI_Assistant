@@ -53,6 +53,17 @@ def build_player_context(
 
     player_df = player_df.sort_values("game_date").copy()
 
+    player_df["game_date"] = pd.to_datetime(player_df["game_date"], errors="coerce")
+
+    if game_date:
+        target_date = pd.to_datetime(game_date, errors="coerce")
+        if pd.notna(target_date):
+            player_df = player_df[player_df["game_date"] < target_date].copy()
+
+    if player_df.empty:
+        return None
+
+    player_df = player_df.sort_values("game_date")
     latest_row = player_df.iloc[-1]
     last_5 = player_df.tail(5)
     last_10 = player_df.tail(10)
@@ -199,4 +210,15 @@ def build_player_context(
         "game_date": game_date,
         "team_abbr": team_abbr,
         "opponent_abbr": opponent_abbr,
+
+        "starter_flag": safe_float(safe_get(latest_row, "starter_flag"), 0),
+        "bench_flag": safe_float(safe_get(latest_row, "bench_flag"), 0),
+        "team_injured_count": safe_float(safe_get(latest_row, "team_injured_count"), 0),
+        "team_starter_injured_count": safe_float(safe_get(latest_row, "team_starter_injured_count"), 0),
+        "team_injured_minutes_lost": safe_float(safe_get(latest_row, "team_injured_minutes_lost"), 0),
+        "team_injured_points_lost": safe_float(safe_get(latest_row, "team_injured_points_lost"), 0),
+        "opponent_injured_count": safe_float(safe_get(latest_row, "opponent_injured_count"), 0),
+        "opponent_starter_injured_count": safe_float(safe_get(latest_row, "opponent_starter_injured_count"), 0),
+        "role_boost_flag": safe_float(safe_get(latest_row, "role_boost_flag"), 0),
+        "role_boost_score": safe_float(safe_get(latest_row, "role_boost_score"), 0),
     }
