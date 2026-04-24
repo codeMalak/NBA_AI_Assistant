@@ -14,9 +14,13 @@ export async function getGamesByDate(date) {
   return response.data
 }
 
-export async function getPlayers(team) {
+
+export async function getPlayers(team, gameId) {
   const response = await axios.get(`${API_BASE}/players`, {
-    params: { team },
+    params: {
+      team,
+      game_id: gameId,
+    },
   })
   return response.data
 }

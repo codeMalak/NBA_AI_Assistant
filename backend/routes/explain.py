@@ -1,3 +1,4 @@
+import pandas as pd
 from flask import Blueprint, jsonify, request
 
 from services.model_service import predict_stat_threshold
@@ -7,6 +8,15 @@ from services.llm_service import generate_explanation_with_hf
 from services.template_service import template_explain
 import traceback
 explain_bp = Blueprint("explain", __name__)
+
+
+def safe_float(value, default: float = 0.0) -> float:
+    if pd.isna(value):
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
 
 
 @explain_bp.post("/explain")
@@ -30,7 +40,7 @@ def explain():
         return jsonify({"error": "threshold is required"}), 400
 
     try:
-        threshold = float(threshold)
+        threshold = safe_float(threshold)
     except (TypeError, ValueError):
         return jsonify({"error": "threshold must be numeric"}), 400
 
@@ -88,4 +98,9 @@ def explain():
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 404
     except Exception as exc:
+        import traceback
+        print("EXPLANATION ROUTE FAILED")
+        print("Exception type:", type(exc).__name__)
+        print("Exception repr:", repr(exc))
+        traceback.print_exc()
         return jsonify({"error": f"Explanation failed: {exc}"}), 500

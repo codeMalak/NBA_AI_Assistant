@@ -7,23 +7,20 @@ players_bp = Blueprint("players", __name__)
 @players_bp.get("/players")
 def players():
     team = request.args.get("team")
+    game_id = request.args.get("game_id")
+
     df = load_games()
 
-    if team:
-        team_value = team.strip().upper()
+    # First filter by team
+    if team and "team_abbr" in df.columns:
+        df = df[df["team_abbr"].fillna("").astype(str).str.upper() == team.upper()]
 
-        if "team_abbr" in df.columns:
-            team_series = df["team_abbr"].fillna("").astype(str).str.strip().str.upper()
-            df = df[team_series == team_value]
+    # Only use game_id filter if it actually finds players
+    if game_id and "game_id" in df.columns:
+        game_df = df[df["game_id"].astype(str) == str(game_id)]
 
-        elif "team_name" in df.columns:
-            team_series = df["team_name"].fillna("").astype(str).str.strip().str.upper()
-            df = df[team_series == team_value]
-
-        elif "team_id" in df.columns and team_value.isdigit():
-            df = df[df["team_id"] == int(team_value)]
-
-        # Do not hard fail if no team filter column exists
+        if not game_df.empty:
+            df = game_df
 
     player_names = (
         df["player_name"]
@@ -35,5 +32,6 @@ def players():
 
     return jsonify({
         "team": team,
-        "players": [{"player_name": name} for name in sorted(player_names.unique().tolist())]
+        "game_id": game_id,
+        "players": [{"player_name": name} for name in sorted(player_names.unique())]
     })

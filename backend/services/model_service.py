@@ -5,6 +5,7 @@ from pathlib import Path
 
 import joblib
 import pandas as pd
+import numpy as np
 
 from services.data_loader import load_training_data
 
@@ -67,7 +68,7 @@ def _build_prediction_row(latest_row: pd.DataFrame, feature_columns: list[str]) 
 
     for col in feature_columns:
         if col not in row.columns:
-            row[col] = pd.NA
+            row[col] = np.nan
 
     return row[feature_columns].copy()
 

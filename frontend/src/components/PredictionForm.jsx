@@ -66,50 +66,51 @@ export default function PredictionForm({ onSubmit, loading }) {
   }, [selectedDate])
 
   useEffect(() => {
-    async function loadPlayersForGame() {
-      if (!selectedGame) {
-        setHomePlayers([])
-        setAwayPlayers([])
-        setPlayerName('')
-        return
-      }
-
-      try {
-        setPlayersLoading(true)
-        setPlayersError('')
-        const homeAbbr = selectedGame.home_team?.abbreviation
-        const awayAbbr = selectedGame.visitor_team?.abbreviation
-
-        const [homeRes, awayRes] = await Promise.all([
-          getPlayers(homeAbbr),
-          getPlayers(awayAbbr),
-        ])
-
-        const home = homeRes.players || []
-        const away = awayRes.players || []
-
-        setHomePlayers(home)
-        setAwayPlayers(away)
-
-        const merged = [...home, ...away]
-        if (merged.length > 0) {
-          setPlayerName(merged[0].player_name)
-        } else {
+      async function loadPlayersForGame() {
+        if (!selectedGame) {
+          setHomePlayers([])
+          setAwayPlayers([])
           setPlayerName('')
+          return
         }
-      } catch (err) {
-        console.error(err)
-        setHomePlayers([])
-        setAwayPlayers([])
-        setPlayerName('')
-        setPlayersError(err.response?.data?.error || err.message || 'Failed to load players')
-      } finally {
-        setPlayersLoading(false)
-      }
-    }
 
-    loadPlayersForGame()
-  }, [selectedGame])
+        try {
+          setPlayersLoading(true)
+          setPlayersError('')
+
+          const homeAbbr = selectedGame.home_team?.abbreviation
+          const awayAbbr = selectedGame.visitor_team?.abbreviation
+
+          const [homeRes, awayRes] = await Promise.all([
+            getPlayers(homeAbbr, selectedGame.id),
+            getPlayers(awayAbbr, selectedGame.id),
+          ])
+
+          const home = homeRes.players || []
+          const away = awayRes.players || []
+
+          setHomePlayers(home)
+          setAwayPlayers(away)
+
+          const merged = [...home, ...away]
+          if (merged.length > 0) {
+            setPlayerName(merged[0].player_name)
+          } else {
+            setPlayerName('')
+          }
+        } catch (err) {
+          console.error(err)
+          setHomePlayers([])
+          setAwayPlayers([])
+          setPlayerName('')
+          setPlayersError(err.response?.data?.error || err.message || 'Failed to load players')
+        } finally {
+          setPlayersLoading(false)
+        }
+      }
+
+      loadPlayersForGame()
+    }, [selectedGame])
 
   function handleSubmit(event) {
     event.preventDefault()
