@@ -22,5 +22,7 @@ export async function getPlayers(team, gameId) {
       game_id: gameId,
     },
   })
+  // console.log("getPlayers: ")
+  // console.log(response.data)
   return response.data
 }

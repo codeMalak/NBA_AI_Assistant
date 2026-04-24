@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import pandas as pd
+import json
 
 # BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 # PROCESSED_PATH = os.path.join(BASE_DIR, "data", "processed", "player_game_logs.csv")
@@ -44,7 +45,13 @@ TRAINING_PATH = os.path.join(BASE_DIR, "data", "processed", "training_features.c
 COMBINED_PATH = os.path.join(BASE_DIR, "data", "processed", "combined_player_game_logs.csv")
 PROCESSED_PATH = os.path.join(BASE_DIR, "data", "processed", "player_game_logs.csv")
 SAMPLE_PATH = os.path.join(BASE_DIR, "data", "processed", "nba_player_games_sample.csv")
+PLAYER_ROSTER_PATH = os.path.join(BASE_DIR, "data", "processed", "player_roster.csv")
 
+def load_players() -> pd.DataFrame:
+    df = pd.read_csv(PLAYER_ROSTER_PATH).fillna("")
+
+    # print(df)
+    return df
 
 def load_games() -> pd.DataFrame:
     # ONLY for UI usage
@@ -81,3 +88,6 @@ def load_training_data() -> pd.DataFrame:
 def get_all_players() -> list[str]:
     df = load_games()
     return sorted(df["player_name"].dropna().unique().tolist())
+
+if __name__ == "__main__":
+    load_players()
