@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+import re
 import os
 from dotenv import load_dotenv
 from huggingface_hub import InferenceClient
@@ -7,7 +7,7 @@ from huggingface_hub import InferenceClient
 load_dotenv()
 
 HF_TOKEN = os.getenv("HF_API_TOKEN") or os.getenv("HF_TOKEN")
-HF_MODEL = "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B"
+HF_MODEL = "HuggingFaceH4/zephyr-7b-beta"
 
 
 def _build_user_prompt(prompt: str) -> str:
@@ -23,64 +23,68 @@ def generate_explanation_with_hf(prompt: str) -> str:
     if not HF_TOKEN:
         raise ValueError("HF_API_TOKEN or HF_TOKEN is missing from .env")
 
-    client = InferenceClient(
-        token=HF_TOKEN,
-        provider="auto",
+    client = InferenceClient(token=HF_TOKEN)
+
+    completion = client.chat.completions.create(
+        model=HF_MODEL,
+        messages=[
+            {
+                "role": "user",
+                "content": prompt,
+            }
+        ],
+        max_tokens=260,
+        temperature=0.2,
     )
 
-    user_prompt = _build_user_prompt(prompt)
-
-    try:
-        completion = client.chat.completions.create(
-            model=HF_MODEL,
-            messages=[
-                {
-                    "role": "user",
-                    "content": user_prompt,
-                }
-            ],
-            max_tokens=350,
-            temperature=0.6,
-        )
-    except Exception as exc:
-        raise RuntimeError(
-            f"Hugging Face chat completion failed for model '{HF_MODEL}': {repr(exc)}"
-        ) from exc
-
-    try:
-        message_obj = completion.choices[0].message
-    except Exception as exc:
-        raise RuntimeError(
-            f"Unexpected Hugging Face response structure for model '{HF_MODEL}': {repr(completion)}"
-        ) from exc
-
+    message_obj = completion.choices[0].message
     content = getattr(message_obj, "content", None)
-    reasoning_content = getattr(message_obj, "reasoning_content", None)
 
-    final_text = content or reasoning_content
-
-    if not final_text or not isinstance(final_text, str):
+    if not content or not isinstance(content, str):
         raise RuntimeError(
-            f"Empty or invalid LLM message returned for model '{HF_MODEL}': {repr(completion)}"
+            f"LLM did not return final content for model '{HF_MODEL}'."
         )
 
-    return clean_explanation(final_text)
+    return clean_explanation(content)
+
+
+import re
+
 
 def clean_explanation(text: str) -> str:
-    banned_starts = [
-        "Okay,",
-        "Alright,",
-        "I need to",
-        "Let me",
-    ]
+    if not text:
+        return ""
 
     cleaned = text.strip()
 
-    for phrase in banned_starts:
-        if cleaned.startswith(phrase):
-            # Try to cut to the first real sentence after the intro
-            parts = cleaned.split(". ", 1)
-            if len(parts) > 1:
-                cleaned = parts[1].strip()
+    # Remove fake user turns or chat-template artifacts
+    stop_markers = [
+        "[USER]",
+        "[INST]",
+        "[/INST]",
+        "<|user|>",
+        "User:",
+        "USER:",
+        "\nUser:",
+        "\nUSER:",
+    ]
 
-    return cleaned
+    for marker in stop_markers:
+        if marker in cleaned:
+            cleaned = cleaned.split(marker, 1)[0].strip()
+
+    # Remove assistant labels
+    for marker in ["[ASST]", "Assistant:", "ASSISTANT:", "<|assistant|>"]:
+        cleaned = cleaned.replace(marker, "").strip()
+
+    # If the model repeats another answer, keep only the first one
+    first_decision = cleaned.find("Decision:")
+    if first_decision != -1:
+        second_decision = cleaned.find("Decision:", first_decision + len("Decision:"))
+        if second_decision != -1:
+            cleaned = cleaned[:second_decision].strip()
+
+    # Normalize weird spacing around decimals: 22. 24 -> 22.24
+    cleaned = re.sub(r"(\d+)\.\s+(\d+)", r"\1.\2", cleaned)
+
+    return cleaned.strip()

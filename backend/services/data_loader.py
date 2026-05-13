@@ -81,7 +81,7 @@ def load_games() -> pd.DataFrame:
     return df.sort_values(["player_name", "game_date"]).reset_index(drop=True)
 
 def load_training_data() -> pd.DataFrame:
-    TRAINING_PATH = os.path.join(BASE_DIR, "data", "processed", "training_features.csv")
+    TRAINING_PATH = os.path.join(BASE_DIR, "data", "processed", "feature_store_points.csv")
 
     if not os.path.exists(TRAINING_PATH):
         raise FileNotFoundError(f"{TRAINING_PATH} not found")

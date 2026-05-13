@@ -1,4 +1,5 @@
 import pandas as pd
+import traceback
 from flask import Blueprint, jsonify, request
 
 from services.model_service import predict_stat_threshold
@@ -6,7 +7,6 @@ from services.retrieval_service import build_player_context
 from services.prompt_service import build_explanation_prompt
 from services.llm_service import generate_explanation_with_hf
 from services.template_service import template_explain
-import traceback
 explain_bp = Blueprint("explain", __name__)
 
 
@@ -98,7 +98,6 @@ def explain():
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 404
     except Exception as exc:
-        import traceback
         print("EXPLANATION ROUTE FAILED")
         print("Exception type:", type(exc).__name__)
         print("Exception repr:", repr(exc))

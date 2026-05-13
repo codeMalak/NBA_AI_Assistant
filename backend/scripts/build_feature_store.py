@@ -162,6 +162,32 @@ def main():
     stats_df = pd.read_csv(stats_path, low_memory=False)
     stats_df["game_date"] = pd.to_datetime(stats_df["game_date"], errors="coerce")
 
+    games_path = RAW_DIR / "games.csv"
+
+    if games_path.exists():
+        games_df = pd.read_csv(games_path, low_memory=False)
+
+        # Normalize game id
+        stats_df["game_id"] = pd.to_numeric(stats_df["game_id"], errors="coerce")
+        games_df["game_id"] = pd.to_numeric(games_df["game_id"], errors="coerce")
+
+        # Find the date column from games.csv
+        if "date" in games_df.columns:
+            games_df["game_date_from_games"] = pd.to_datetime(games_df["date"], errors="coerce")
+        elif "game_date" in games_df.columns:
+            games_df["game_date_from_games"] = pd.to_datetime(games_df["game_date"], errors="coerce")
+        else:
+            games_df["game_date_from_games"] = pd.NaT
+
+        game_dates = games_df[["game_id", "game_date_from_games"]].drop_duplicates("game_id")
+
+        stats_df = stats_df.merge(game_dates, on="game_id", how="left")
+
+        # Fill missing stat dates from games.csv
+        stats_df["game_date"] = stats_df["game_date"].fillna(stats_df["game_date_from_games"])
+
+        stats_df = stats_df.drop(columns=["game_date_from_games"])
+
     player_avg = (
         pd.read_csv(player_avg_path, low_memory=False)
         if player_avg_path.exists()
