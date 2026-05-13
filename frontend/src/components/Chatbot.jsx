@@ -1,111 +1,131 @@
-import { useState } from "react";
+import { useState } from 'react'
 
 export default function Chatbot() {
-  // Give model instructions; set default messages state
+  const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState([
-    { role: "system", content: "You are a helpful assistant." },
-    { role: "assistant", content: "Hi! Ask me anything." },
-  ]);
+    {
+      role: 'assistant',
+      content: 'Hi! Ask me about predictions, player context, or how the model made a decision.',
+    },
+  ])
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
+  async function handleSend(event) {
+    event.preventDefault()
 
-  async function handleSubmit(event) {
-    event.preventDefault();
-    // Prevent empty inputs or response is loading
-    if (!input.trim() || loading) return;
+    const trimmed = input.trim()
+    if (!trimmed) return
 
-    const userMessage = { role: "user", content: input };
+    const userMessage = { role: 'user', content: trimmed }
+    const nextMessages = [...messages, userMessage]
 
-    // Create new array containing previous messages + user message
-    // Example:
-    // const messages = [
-    //   { role: "system", content: "You are a helpful assistant." },
-    //   { role: "assistant", content: "Hi! Ask me anything." },
-    //   { role: "user", content: "What is React?" }
-    // ];
-    const updatedMessages = [...messages, userMessage];
-
-    setMessages(updatedMessages)  // Update message UI immediately while waiting for backend
-    setInput("")           // Clear text box after sending
+    setMessages(nextMessages)
+    setInput('')
     setLoading(true)
 
-    // Start request
     try {
-      // Send request to python backend
-      const response = await fetch("http://127.0.0.1:5000/api/chatbot", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+      const response = await fetch('http://127.0.0.1:5000/api/chatbot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: updatedMessages,
+          messages: nextMessages,
         }),
-      });
+      })
 
-      // { reply: "Hello!" }
-      const data = await response.json();
+      const data = await response.json()
+      console.log('Chatbot API response:', data)
 
-      if (!response.ok) {
-        throw new Error(data.error || "Request failed");
-      }
+      const botText =
+        data.response ||
+        data.answer ||
+        data.reply ||
+        data.message ||
+        data.error ||
+        'I could not generate a response.'
 
-      // Update messages with assisstant reply
-      setMessages([
-        // Make sure to include previous messages
-        ...updatedMessages,
-        // Add chatbot reply to messages
-        { role: "assistant", content: data.reply },
-      ])
-    }
-
-    catch (error) {
-      setMessages([
-        ...updatedMessages,
+      setMessages((prev) => [
+        ...prev,
         {
-          role: "assistant", content: `Error: ${error.message}`,
+          role: 'assistant',
+          content: botText,
         },
-      ]);
-    }
+      ])
+    } catch (err) {
+      console.error(err)
 
-    finally {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: 'Sorry, I had trouble reaching the chatbot service.',
+        },
+      ])
+    } finally {
       setLoading(false)
     }
   }
 
   return (
-    <section>
-      <h2>Chatbot</h2>
-
-      <div className="chat-box">
-        {messages
-          // Filter out messages whose role == "system"; "system" messages are for LLM, not message history
-          .filter((msg) => msg.role !== "system")
-          // Iterate over each message and return html element
-          .map((msg, index) => (
-            // Create CSS class for user/bot
-            <div key={index} className={`chat-message ${msg.role}`}>
-              <strong>{msg.role === "user" ? "You" : "Bot"}:</strong>{" "} {msg.content}
+    <div className="chatbot-widget">
+      {open && (
+        <div className="chatbot-panel">
+          <div className="chatbot-header">
+            <div>
+              <h3>NBA Assistant</h3>
+              <p>Ask about predictions, players, and model context</p>
             </div>
-          ))
-        }
-      </div>
 
-      <form onSubmit={handleSubmit} className="form">
-        <label>
-          Message
-          <textarea
-            rows="3"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message..."
-          />
-        </label>
+            <button
+              type="button"
+              className="chatbot-close"
+              onClick={() => setOpen(false)}
+              aria-label="Close chatbot"
+            >
+              ×
+            </button>
+          </div>
 
-        <button type="submit" disabled={loading}>
-          {loading ? "Thinking..." : "Send"}
-        </button>
-      </form>
-    </section>
+          <div className="chatbot-messages">
+            {messages.map((message, index) => (
+              <div
+                key={index}
+                className={`chat-message ${
+                  message.role === 'user' ? 'chat-message-user' : 'chat-message-assistant'
+                }`}
+              >
+                {message.content}
+              </div>
+            ))}
+
+            {loading && (
+              <div className="chat-message chat-message-assistant chatbot-typing">
+                Thinking...
+              </div>
+            )}
+          </div>
+
+          <form className="chatbot-input-row" onSubmit={handleSend}>
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask about this prediction..."
+            />
+            <button type="submit" disabled={loading || !input.trim()}>
+              Send
+            </button>
+          </form>
+        </div>
+      )}
+
+      <button
+        type="button"
+        className="chatbot-toggle"
+        onClick={() => setOpen((prev) => !prev)}
+        aria-label="Open chatbot"
+      >
+        {open ? '×' : 'AI'}
+      </button>
+    </div>
   )
 }
