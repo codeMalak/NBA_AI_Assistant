@@ -5,6 +5,7 @@ from routes.games import games_bp
 from routes.players import players_bp
 from routes.predict import predict_bp
 from routes.explain import explain_bp
+from routes.chatbot import chatbot_bp
 from flask import request
 
 
@@ -16,6 +17,7 @@ app.register_blueprint(games_bp, url_prefix="/api")
 app.register_blueprint(players_bp, url_prefix="/api")
 app.register_blueprint(predict_bp, url_prefix="/api")
 app.register_blueprint(explain_bp, url_prefix="/api")
+app.register_blueprint(chatbot_bp, url_prefix="/api")
 
 
 @app.get("/api/health")

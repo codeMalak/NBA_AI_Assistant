@@ -2,6 +2,7 @@ import { useState } from 'react'
 import PredictionForm from './components/PredictionForm'
 import PredictionCard from './components/PredictionCard'
 import ExplanationPanel from './components/ExplanationPanel'
+import Chatbot from './components/Chatbot'
 import { explainPrediction } from './services/api'
 
 export default function App() {
@@ -60,6 +61,8 @@ export default function App() {
           </>
         )}
       </div>
+
+      <Chatbot />
     </div>
   )
 }
